@@ -1,0 +1,32 @@
+config:
+  # Porta 8082 → acesso direto ao backend via Traefik (entrypoint backendweb).
+  # Porta 8081 → frontend/NextAuth (/api/auth/* é roteado para o Next.js, não ao backend REST).
+  target: "http://localhost:8082"
+  phases:
+    - duration: 1
+      arrivalCount: 11
+      name: "Sustained Login Load"
+  payload:
+    path: "./data/users.csv"
+    fields:
+      - "email"
+      - "password"
+    # skipHeader: true é necessário no Artillery v2 quando `fields` está declarado.
+    # Sem ele, o Artillery trata a linha de header como dado e envia
+    # email="email" / password="password" → 400 de validação.
+    skipHeader: true
+    order: "sequence"
+
+scenarios:
+  - name: "Successful Login Flow"
+    flow:
+      - post:
+          url: "/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          expect:
+            - statusCode:
+                - 200 # login bem sucedido (alguns gateways reescrevem para 200)
+                - 201 # NestJS default para @Post() sem @HttpCode(200)
+                - 429 # Rate limit atingido (AUTH_LOGIN_RATE_LIMIT_MAX=5/min por IP)

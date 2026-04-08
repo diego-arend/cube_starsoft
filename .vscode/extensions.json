@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    "ms-azuretools.vscode-docker",
+    "ms-azuretools.vscode-containers",
+    "editorconfig.editorconfig",
+    "shd101wyy.markdown-preview-enhanced",
+    "mohsen1.prettify-json",
+    "bradlc.vscode-tailwindcss",
+    "redhat.vscode-yaml"
+  ]
+}

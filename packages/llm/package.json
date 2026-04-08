@@ -1,0 +1,39 @@
+{
+  "name": "@turborepo/llm",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "prettier": "@repo/prettier-config",
+  "scripts": {
+    "build": "tsup",
+    "lint": "eslint \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.1.17",
+    "@langchain/openai": "^1.2.3",
+    "@turborepo/logging": "workspace:^",
+    "@turborepo/observability": "workspace:*",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.10.7",
+    "tsup": "^8.0.2",
+    "typescript": "6.0.0-dev.20251210",
+    "vitest": "^4.0.16"
+  }
+}

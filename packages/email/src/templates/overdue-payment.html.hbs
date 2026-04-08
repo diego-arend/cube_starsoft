@@ -1,0 +1,10 @@
+<html>
+  <body>
+    <p>Olá {{customerName}},</p>
+    <p>Sua fatura de {{amount}} está vencida desde {{dueDate}}.</p>
+    {{#if paymentLink}}
+      <p>Pague agora: <a href="{{paymentLink}}">Pagar</a></p>
+    {{/if}}
+    <p>Por favor, regularize o pagamento.</p>
+  </body>
+</html>

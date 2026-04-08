@@ -1,0 +1,92 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.js"],
+      "project": ["scripts/*.js"]
+    },
+    "apps/backend": {
+      "entry": ["src/main.ts", "src/assistant/studio-entry.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/assistant/studio-entry.ts"]
+    },
+    "apps/backend-worker-notification": {
+      "entry": ["src/main.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/frontend": {
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/*": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["**/*.spec.ts", "**/*.test.ts"]
+    },
+    "packages/database": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/migrations/*.ts"]
+    },
+    "packages/logging": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["**/*.spec.ts", "**/*.test.ts"]
+    },
+    "packages/observability": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["**/*.spec.ts", "**/*.test.ts"]
+    },
+    "packages/rate-limit": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["**/*.spec.ts", "**/*.test.ts", "src/login-rate-limit.ts"]
+    },
+    "packages/redis": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["**/*.spec.ts", "**/*.test.ts"]
+    }
+  },
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["eslint"],
+  "ignoreDependencies": [
+    "@repo/prettier-config",
+    "@repo/eslint-config",
+    "@repo/typescript-config",
+    "next",
+    "tailwindcss",
+    "@nestjs/core",
+    "@nestjs/testing",
+    "@nestjs/typeorm",
+    "@opentelemetry/core",
+    "@opentelemetry/instrumentation",
+    "@opentelemetry/instrumentation-amqplib",
+    "@opentelemetry/instrumentation-pino",
+    "@opentelemetry/api-logs",
+    "@opentelemetry/exporter-logs-otlp-grpc",
+    "@opentelemetry/exporter-logs-otlp-http",
+    "@opentelemetry/exporter-metrics-otlp-grpc",
+    "@opentelemetry/exporter-metrics-otlp-http",
+    "@opentelemetry/exporter-trace-otlp-grpc",
+    "@opentelemetry/exporter-trace-otlp-http",
+    "@opentelemetry/instrumentation-aws-sdk",
+    "@opentelemetry/instrumentation-grpc",
+    "@opentelemetry/instrumentation-http",
+    "@opentelemetry/instrumentation-ioredis",
+    "@opentelemetry/instrumentation-nestjs-core",
+    "@opentelemetry/instrumentation-pg",
+    "@opentelemetry/instrumentation-undici",
+    "@opentelemetry/resources",
+    "@opentelemetry/sdk-logs",
+    "@opentelemetry/sdk-metrics",
+    "@opentelemetry/sdk-node",
+    "@opentelemetry/sdk-trace-base",
+    "@opentelemetry/sdk-trace-web",
+    "@opentelemetry/semantic-conventions",
+    "@opentelemetry/auto-instrumentations-node"
+  ],
+  "ignoreWorkspaces": [
+    "packages/eslint-config",
+    "packages/prettier-config",
+    "packages/typescript-config",
+    "packages/ui",
+    "packages/llm",
+    "load-tests"
+  ]
+}

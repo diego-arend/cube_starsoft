@@ -1,0 +1,33 @@
+metadata:
+  author: "Equipe de Engenharia"
+  version: "1.3.0"
+  last-updated: "2026-01-05"
+  example-use-case: "Adicionar nova variável de ambiente no config.yaml e tipá-la no packages/config"
+  
+model: "GEMINI-3 FLASH(Preview)"
+
+timeouts:
+  request: 30s
+  plan: 120s
+
+allowed_actions:
+  propose_changes: true
+  create_branch: false
+  open_pull_request: false
+  push_directly: false
+
+guardrails:
+  - run: "pnpm -w -C . run format"
+  - run: "pnpm -w -C . run lint"
+  - run: "pnpm -w -C . run test:all"
+  - require_human_approval: true
+
+validation_steps:
+  - "Executar: pnpm -w -C . run format"
+  - "Executar: pnpm -w -C . run lint"
+  - "Executar: pnpm -w -C . run test:all"
+
+notes:
+  - "Este arquivo controla o runtime (modelo e timeouts) do profile AgentCubeStarsoft. Não inclua segredos em texto claro."
+  - "Nota: A propriedade `model` pode ser ignorada por GitHub.com; ela é aplicada pelo runtime local/IDE. Para controlar o modelo em IDEs, use o `model:` em frontmatter do `.agent.md` quando aplicável."
+  - "Frontend: Sempre priorizar componentes de `packages/ui`. Novos componentes UI devem ser criados lá via ShadcnUI."

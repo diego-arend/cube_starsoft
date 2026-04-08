@@ -1,0 +1,26 @@
+{
+  // Use the workspace TypeScript install (PNPM-hoisted) instead of VS Code's bundled TS.
+  // This ensures the editor and semantic LS use the same TypeScript version as the project builds.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Use workspace ESLint settings
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Improve TypeScript imports (preference) and avoid noisy experimental features
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.tsserver.trace": "off",
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+    "eslint.workingDirectories": [
+      {
+        "mode": "auto"
+      }
+    ],
+    "files.associations": {
+      "*.css": "tailwindcss"
+    },
+    "vitest.disableWorkspaceWarning": true
+  }

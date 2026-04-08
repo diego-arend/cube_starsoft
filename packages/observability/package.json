@@ -1,0 +1,65 @@
+{
+  "name": "@turborepo/observability",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./nest": {
+      "types": "./dist/nest.d.ts",
+      "import": "./dist/nest.mjs",
+      "require": "./dist/nest.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\"",
+    "lint": "eslint .",
+    "clean": "rm -rf dist .turbo node_modules"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "0.57.0",
+    "@opentelemetry/auto-instrumentations-node": "0.55.0",
+    "@opentelemetry/core": "^1.30.0",
+    "@opentelemetry/exporter-logs-otlp-grpc": "^0.57.0",
+    "@opentelemetry/exporter-logs-otlp-http": "0.57.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.57.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.57.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.57.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.57.0",
+    "@opentelemetry/instrumentation": "0.57.0",
+    "@opentelemetry/instrumentation-amqplib": "0.46.1",
+    "@opentelemetry/instrumentation-nestjs-core": "0.45.0",
+    "@opentelemetry/instrumentation-pino": "0.46.1",
+    "@opentelemetry/resources": "1.30.0",
+    "@opentelemetry/sdk-logs": "0.57.0",
+    "@opentelemetry/sdk-metrics": "1.30.0",
+    "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "1.30.0",
+    "@opentelemetry/semantic-conventions": "1.40.0",
+    "@turborepo/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@swc/core": "^1.15.18",
+    "@types/node": "^20.19.25",
+    "eslint": "^9.39.1",
+    "fastify": "^5.6.2",
+    "rxjs": "^7.8.1",
+    "tsup": "^8.0.2",
+    "typescript": "6.0.0-dev.20251210",
+    "typescript-eslint": "^8.55.0",
+    "unplugin-swc": "^1.5.9"
+  }
+}

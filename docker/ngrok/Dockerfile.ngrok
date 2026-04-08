@@ -1,0 +1,11 @@
+FROM ngrok/ngrok:latest
+
+# ngrok/ngrok:latest runs as a non-root user — RUN chmod would fail.
+# --chmod=755 sets the execute bit at COPY time (BuildKit, default since Docker 23).
+# We override the default ENTRYPOINT (ngrok) with a shell script that:
+#   1. Validates NGROK_AUTHTOKEN and NGROK_BASIC_AUTH are set
+#   2. Builds an inline traffic-policy JSON for basic-auth (--basic-auth is deprecated)
+#   3. Starts the tunnel pointing at the internal Traefik :8081 entrypoint
+COPY --chmod=755 docker-entrypoint-ngrok.sh /docker-entrypoint-ngrok.sh
+
+ENTRYPOINT ["/docker-entrypoint-ngrok.sh"]

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {},
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "src/test/**/*",
+    "src/**/*.spec.ts",
+    "tsup.config.ts",
+    "tsup.config.*.mjs",
+    "vitest.config.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

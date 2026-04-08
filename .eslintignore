@@ -1,0 +1,11 @@
+# Ignore coverage reports
+coverage/**
+**/coverage/**
+**/coverage/**/lcov-report/**
+# Ignore compiled files
+dist/**
+**/dist/**
+# Ignore node_modules (redundant but explicit)
+node_modules/**
+# Ignore package-lock.json generated artifacts
+**/package-lock.json

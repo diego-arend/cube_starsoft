@@ -1,0 +1,14 @@
+{
+  "extends": "../../packages/typescript-config/base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "./.tsbuildinfo",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src"]
+}

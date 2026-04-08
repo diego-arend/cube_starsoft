@@ -1,0 +1,43 @@
+{
+  "name": "@turborepo/logging",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "lint": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\""
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@opentelemetry/api-logs": "0.52.1",
+    "@opentelemetry/instrumentation-pino": "0.41.0",
+    "pino": "^9.0.0",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0 || ^10.0.0 || ^9.0.0 || ^8.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.52.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@nestjs/core": "^11.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@turborepo/config": "workspace:*",
+    "next": "16.0.7",
+    "tsup": "^8.0.1",
+    "typescript": "6.0.0-dev.20251210",
+    "vitest": "^4.0.16"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "extends": "../../packages/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "declarationDir": "dist",
+    "types": ["node", "vitest"]
+  },
+  "include": ["src/**/*", "eslint.config.mjs"],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "src/test/**",
+    "test/**",
+    "dist",
+    "node_modules"
+  ]
+}

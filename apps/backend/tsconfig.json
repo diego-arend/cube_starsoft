@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../packages/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": ["node", "vitest"],
+    "esModuleInterop": true,
+    "outDir": "./dist",
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "vitest.config.ts",
+    "tsup.config.ts",
+    "tsup.config.*.mjs"
+  ]
+}

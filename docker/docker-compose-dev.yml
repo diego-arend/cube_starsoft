@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: cube_starsoft_postgres
+    environment:
+      POSTGRES_DB: cube_starsoft
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - cube_starsoft_postgres_data:/var/lib/postgresql
+    cpus: '1.0'
+    mem_limit: 1024m
+    mem_reservation: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+
+  # pgAdmin (Postgres web admin UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cube_starsoft_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8180:80" # pgAdmin web UI
+    depends_on:
+      - postgres
+    volumes:
+      - cube_starsoft_pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: cube_starsoft_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - cube_starsoft_redis_data:/data
+    cpus: '0.5'
+    mem_limit: 256m
+    mem_reservation: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    # Fake email server smtp for send email and dashboard for visualize emails
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: cube_starsoft_mailpit
+    ports:
+      - "1026:1025" # Porta SMTP - a mesma que você usa no Nodemailer
+      - "8026:8025" # Porta da Interface Web - acesse http://localhost:8026
+    restart: unless-stopped
+
+  # RabbitMQ message broker with Management UI for local development
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: cube_starsoft_rabbitmq
+    ports:
+      - "5673:5672" # AMQP 0-9-1 / AMQP 1.0
+      - "15673:15672" # Management UI - acesse http://localhost:15673
+      - "15693:15692" # Prometheus metrics
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+    volumes:
+      - cube_starsoft_rabbitmq_data:/var/lib/rabbitmq
+    entrypoint: >
+      /bin/bash -c "
+      rabbitmq-plugins enable rabbitmq_prometheus &&
+      docker-entrypoint.sh rabbitmq-server
+      "
+    restart: unless-stopped
+
+  # Redis web UI for visualizing Redis data (RedisInsight)
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: cube_starsoft_redisinsight
+    environment:
+      RI_APP_PORT: "8001"
+      RI_STDOUT_LOGGER: "true"
+    ports:
+      - "8002:8001" # Porta da interface web RedisInsight - acesse http://localhost:8002
+    depends_on:
+      - redis
+    restart: unless-stopped
+    cpus: '0.5'
+    mem_limit: 512m
+    mem_reservation: 256m
+    volumes:
+      - cube_starsoft_redisinsight_data:/db
+
+  # MinIO (S3-compatible object storage) for local development
+  minio:
+    image: minio/minio:latest
+    container_name: cube_starsoft_minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9010:9000" # S3 API
+      - "9011:9001" # Console UI
+    command: server /data --console-address ":9001"
+    volumes:
+      - cube_starsoft_minio_data:/data
+    restart: unless-stopped
+
+volumes:
+  cube_starsoft_postgres_data:
+  cube_starsoft_redis_data:
+  cube_starsoft_redisinsight_data:
+  cube_starsoft_rabbitmq_data:
+  cube_starsoft_minio_data:
+  cube_starsoft_pgadmin_data:

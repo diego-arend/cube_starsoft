@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/eslint-config/base",
+  "ignores": ["eslint.config.mjs"],
+  "languageOptions": {
+    "parserOptions": {
+      "project": ["./tsconfig.eslint.json"]
+    }
+  }
+}

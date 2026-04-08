@@ -1,0 +1,226 @@
+server:
+  port: 3001
+  # Optional: shutdown timeout in milliseconds
+  shutdown_timeout: 30000
+  # Optional rate limit settings
+  # RATE_LIMIT_ENABLED, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS
+  rate_limit:
+    enabled: false
+    max_requests: 100
+    window_ms: 60000
+    # failover strategy when redis is not available: in-memory to preserve
+    # counting using a local store, or passthrough to disable rate limiting
+    # during a Redis outage (fail-open).
+    failover_strategy: in-memory
+  # Process environment to determine runtime behavior (development/production/test)
+  node_env: development
+  # Custom hostname for the service instance identification
+  hostname: "localhost"
+  # Whether swagger (OpenAPI) is enabled (SWAGGER_ENABLED)
+  swagger:
+    enabled: true
+  # Log configuration
+  log_level: info
+  log_format: json
+
+# Global CORS Configuration
+cors_origin: "*"
+
+auth:
+  # JWT secrets for signing tokens (required)
+  jwt_secret: "dev-jwt-secret-please-change"
+  jwt_refresh_secret: "dev-jwt-refresh-secret-please-change"
+  frontend_auth_secret: "dev-frontend-auth-secret-please-change-at-least-32-chars"
+  # Login rate limit settings (AUTH_LOGIN_RATE_LIMIT_MAX, AUTH_LOGIN_RATE_LIMIT_WINDOW_MS)
+  login_rate_limit:
+    max: 5
+    window_ms: 60000
+  # Token TTLs (seconds)
+  jwt_expires_in: 3600
+  jwt_refresh_expires_in: 604800
+  jwt_issuer: "saas-backend"
+  jwt_audience: "saas-frontend"
+  # Whether to trust the forwarded host header
+  auth_trust_host: true
+  # Authentication secret required by NextAuth server-side
+  auth_secret: "supersecret-dev-key-change-this-in-prod"
+
+database:
+  host: localhost
+  port: 5433
+  name: cube_starsoft
+  user: postgres
+  password: password
+  url: postgresql://postgres:password@localhost:5433/cube_starsoft
+  # Should the application run migrations at startup? Defaults to false because CI/CD manages migrations
+  migrations_run: false
+  # Whether to run TypeORM `synchronize` at startup. Defaults to false — prefer CI/CD to manage schema.
+  synchronize: false
+  # Enable pgvector for vector search support
+  pgvector_enabled: true
+  # Connection configuration
+  ssl: "false"
+  max_connections: 20
+  idle_timeout: 10000
+  connection_timeout: 2000
+
+redis:
+  # Whether Redis is enabled (REDIS_ENABLED)
+  enabled: true
+  # Connection details (Optional if using REDIS_URL)
+  url: "redis://127.0.0.1:6380"
+  host: 127.0.0.1
+  port: 6380
+  password: ""
+  # Whether to use an in-memory fallback store if Redis is disabled/unavailable
+  fallback_enabled: true
+  # Circuit breaker: number of consecutive failures to open circuit (REDIS_FAILURE_THRESHOLD)
+  failure_threshold: 5
+  # Circuit breaker reset timeout in ms (REDIS_RESET_TIMEOUT_MS)
+  reset_timeout_ms: 10000
+
+observability:
+  enabled: true
+  # OTEL_SERVICE_NAME: "backend-api" | "backend-worker-notification"
+  service_name: "cube-starsoft"
+  # deployment.environment: production | staging | development
+  deployment_environment: "development"
+  service_namespace: "cube-starsoft"
+  # metric export interval: 15000 (standard for Prometheus scrape)
+  metric_export_interval: 15000
+  # metric export timeout: 10000 (must be < interval)
+  metric_export_timeout: 10000
+  log_exporter_enabled: true
+  # Exporters configuration (OTEL_TRACES_EXPORTER, OTEL_METRICS_EXPORTER, OTEL_LOGS_EXPORTER)
+  traces_exporter: "otlp"
+  metrics_exporter: "otlp"
+  logs_exporter: "otlp"
+  # The endpoint of the OTel Collector (OTEL_EXPORTER_OTLP_ENDPOINT)
+  # CLI: http://localhost:14318 | Docker: http://otel-collector:14318
+  otlp_endpoint: "http://localhost:14318"
+  # OTLP/HTTP endpoint for the proxy route (Frontend → Backend → Collector) (OTEL_EXPORTER_OTLP_HTTP_ENDPOINT)
+  otlp_http_endpoint: "http://localhost:14318"
+  # Protocol: http/protobuf (recommended) or grpc
+  protocol: "http/protobuf"
+  # OTEL_SEMCONV_STABILITY_OPT_IN: "http" (ensures v1 compatibility for dashboards)
+  semconv_stability: "http"
+  # Service version for resource identification
+  service_version: "1.0.0"
+  # Headers to send to the collector (OTEL_EXPORTER_OTLP_HEADERS)
+  otlp_headers: "x-api-key=shared-secret-token-12345"
+  # Bearer token for authenticating agents sending OTLP through the backend proxy
+  otel_ingestion_bearer_token: "dev-secure-bearer-token"
+
+email:
+  smtp:
+    # SMTP host to use for sending emails
+    host: localhost
+    # SMTP port
+    port: 1026
+    # SMTP username
+    user: ""
+    # SMTP password
+    password: ""
+    # Use secure (TLS) connection
+    secure: false
+    # Default FROM address used by the application
+    from: "noreply@example.com"
+    from_name: "SaaS Backend"
+
+rabbitmq:
+  # AMQP connection URL or host configuration
+  url: amqp://rabbitmq:rabbitmq@127.0.0.1:5673
+  host: 127.0.0.1
+  port: 5673
+  # Default credentials for local docker-compose RabbitMQ
+  user: rabbitmq
+  password: rabbitmq
+  # Optional: reconnect timeout in ms used by the RabbitMQ client
+  reconnect_timeout_ms: 2000
+  # Optional: prefetch count for QoS (Quality of Service)
+  # Determines how many messages a consumer can receive without sending an acknowledgement.
+  prefetch: 10
+
+s3:
+  # Example S3 settings. In development you can use MinIO and set endpoint + credentials.
+  bucket: "cube-starsoft"
+  endpoint: "http://localhost:9010"
+  access_key_id: "minio"
+  secret_access_key: "minio123"
+  region: "us-east-1"
+  public_url: "http://localhost:9010/cube-starsoft"
+  force_path_style: true # true=required for Minio/false=AWS S3 production
+
+frontend:
+  next_public_api_url: "http://localhost:3001"
+  api_url: "http://localhost:3001"
+  next_public_otel_enabled: true
+  # next_public_otel_service_name is omitted: `service_name` below already generates
+  # both FRONTEND_OTEL_SERVICE_NAME and NEXT_PUBLIC_OTEL_SERVICE_NAME
+  next_public_otel_exporter_otlp_endpoint: "http://localhost:14318"
+  next_public_otel_exporter_otlp_protocol: "http/protobuf"
+  next_public_log_exporter_enabled: true
+  # Grafana Faro SDK — browser observability (JS errors, Web Vitals, distributed traces)
+  # Set to the Alloy collector endpoint: http://<host>:12347/collect
+  next_public_faro_url: "http://localhost:12348/collect"
+  next_public_app_version: "1.0.0"
+  next_public_env: "development"
+  # WebSocket: CLI points directly to backend (no Traefik); Docker uses http://localhost:8081
+  next_public_socket_url: "http://localhost:3001"
+  auth_secret: "supersecret-dev-key-change-this-in-prod"
+  auth_trust_host: "true"
+  auth_url: "http://localhost:3000"
+  auth_url_internal: "http://localhost:3000"
+  # Server-side OTEL (Next.js process → OTel Collector)
+  # CLI: localhost:14318 | Docker: http://otel-collector:14318
+  otlp_endpoint: "http://localhost:14318"
+  # Headers sent to the backend OTLP proxy (validates OTEL_INGESTION_BEARER_TOKEN)
+  otlp_headers: "Authorization=Bearer dev-secure-bearer-token"
+  log_exporter_enabled: true
+  service_name: "frontend-server"
+  service_namespace: "cube-starsoft"
+  observability_protocol: "http/protobuf"
+
+backend:
+  enabled: true
+  service_name: "backend-api"
+
+worker:
+  enabled: true
+  service_name: "backend-worker-notification"
+
+llm:
+  tts:
+    enabled: true
+    provider: "openai"
+    api_key: "sk-..."
+    base_url: "https://api.openai.com/v1/audio/speech"
+    model: "gpt-4o-mini-tts"
+    default_voice: "alloy"
+    default_format: "mp3"
+    default_language: "pt"
+  stt:
+    provider: "openai"
+    model: "gpt-4o-mini-transcribe"
+    openai_api_key: "YOUR_OPENAI_API_KEY"
+    base_url: "https://api.openai.com/v1/audio/transcriptions"
+    default_language: "pt"
+    # Max file size in MB for audio transcriptions
+    max_file_size_mb: 5
+  embeddings:
+    provider: "openai"
+    model: "text-embedding-3-small"
+    openai_api_key: "YOUR_OPENAI_API_KEY"
+    base_url: "https://api.openai.com/v1/embeddings"
+    s3_bucket: "cube-starsoft-embeddings"
+  multimodal:
+    provider: "openai"
+    model: "gpt-5-nano"
+    openai_api_key: "YOUR_OPENAI_API_KEY"
+    base_url: "https://api.openai.com/v1"
+  langgraph_studio:
+    # API key for LangGraph Studio integration from LangSmith
+    langsmith_api_key: "lsv2_pt_dev_dummy_key_for_validation_purposes"
+
+## NOTE: `node_env` and `swagger.enabled` are intentionally part of the `server`
+## configuration; they will be flattened to `NODE_ENV` and `SWAGGER_ENABLED`.

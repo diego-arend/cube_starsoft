@@ -1,0 +1,62 @@
+{
+  "name": "@turborepo/database",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.mjs",
+      "require": "./dist/client.js"
+    },
+    "./testing": {
+      "types": "./dist/test/mock-factory.d.ts",
+      "import": "./dist/test/mock-factory.mjs",
+      "require": "./dist/test/mock-factory.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "prettier": "@repo/prettier-config",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "lint": "eslint . --ext .ts --fix",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\"",
+    "migrate:run": "ts-node -r tsconfig-paths/register ./src/cli/run-migrations.ts",
+    "migrate:run:prod": "node dist/cli/run-migrations.js",
+    "migrate:generate": "ts-node -r tsconfig-paths/register ./src/cli/generate-migration.ts",
+    "seed:users": "ts-node -r tsconfig-paths/register ./src/cli/seed-admin.ts && ts-node -r tsconfig-paths/register ./src/cli/seed-users.ts",
+    "seed:users:prod": "node dist/cli/seed-admin.js && node dist/cli/seed-users.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/typeorm": "^11.0.0",
+    "@turborepo/config": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.1.4",
+    "pg": "^8.0.0",
+    "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typeorm": "^0.3.14",
+    "typescript": "6.0.0-dev.20251210",
+    "uuid": "^11.1.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.1",
+    "vitest": "^4.0.16"
+  }
+}

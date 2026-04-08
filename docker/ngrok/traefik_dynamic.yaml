@@ -1,0 +1,94 @@
+http:
+  routers:
+    # ── All traffic arrives via entrypoint web :8081 (from ngrok) ────────────
+    #
+    # Priority (higher wins):
+    #   200 — /api/auth  → frontend (NextAuth route handler in Next.js)
+    #   200 — /api/otel  → frontend (OTEL proxy route handler in Next.js)
+    #   200 — /socket.io → backend  (WebSocket — must bypass Next.js entirely)
+    #   100 — /api       → backend  + strip-api middleware (REST API)
+    #     1 — /          → frontend (catch-all Next.js pages)
+    #
+    # Request flow:
+    #   Browser → ngrok (basic-auth) → Traefik:8081
+    #     /api/auth/*  → frontend:3000  (Next.js handles NextAuth)
+    #     /api/otel/*  → frontend:3000  (Next.js handles OTEL proxy)
+    #     /socket.io/* → backend:3001   (Socket.IO WebSocket upgrade)
+    #     /api/*       → backend:3001   (/api prefix stripped → /*)
+    #     /*           → frontend:3000  (Next.js pages/assets)
+
+    frontend-auth:
+      rule: "PathPrefix(`/api/auth`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 200
+
+    frontend-otel:
+      rule: "PathPrefix(`/api/otel`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 200
+
+    backend-socket:
+      rule: "PathPrefix(`/socket.io`)"
+      service: backend-service
+      entryPoints:
+        - web
+      priority: 200
+
+    backend-api:
+      rule: "PathPrefix(`/api`)"
+      service: backend-service
+      entryPoints:
+        - web
+      priority: 100
+      middlewares:
+        - strip-api
+
+    frontend:
+      rule: "PathPrefix(`/`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 1
+
+  middlewares:
+    strip-api:
+      stripPrefix:
+        prefixes:
+          - "/api"
+
+  services:
+    frontend-service:
+      loadBalancer:
+        # Forward the original Host header so NextAuth origin checks pass.
+        passHostHeader: true
+        # WebSocket-safe transport: disables response-header timeout and keeps
+        # idle connections open while Next.js upgrades Socket.IO connections.
+        serversTransport: ws-transport
+        servers:
+          - url: "http://frontend:3000"
+
+    backend-service:
+      loadBalancer:
+        # Forward the original Host header so NestJS/Socket.IO origin checks pass.
+        # Shared WebSocket-safe transport — same settings as frontend-service.
+        # Sticky sessions are NOT needed: backend uses the Socket.IO Redis adapter
+        # so any replica can transparently handle any client connection.
+        passHostHeader: true
+        serversTransport: ws-transport
+        servers:
+          - url: "http://backend:3001"
+
+  serversTransports:
+    ws-transport:
+      # responseHeaderTimeout=0 disables the timeout while waiting for the first
+      # response byte — critical for WebSocket upgrade handshakes (Next.js →
+      # Traefik → backend) and long-poll connections.
+      # idleConnTimeout=3600s keeps WebSocket/keep-alive connections alive for
+      # up to one hour, matching the entrypoint idleTimeout settings.
+      forwardingTimeouts:
+        responseHeaderTimeout: "0s"
+        idleConnTimeout: "3600s"

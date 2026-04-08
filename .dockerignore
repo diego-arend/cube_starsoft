@@ -1,0 +1,9 @@
+node_modules
+.git
+.next
+dist
+.env
+*.log
+coverage
+.turbo
+.eslintcache

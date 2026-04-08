@@ -1,0 +1,54 @@
+{
+  "name": "backend-worker-notification",
+  "version": "0.0.1",
+  "private": true,
+  "prettier": "@repo/prettier-config",
+  "scripts": {
+    "prebuild": "echo 'Skipping nested workspace build — use root build: pnpm run build:packages'",
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\" \"test/**/*.{ts,tsx,js,json,md}\" || true",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "start": "node dist/src/main.js",
+    "start:prod": "node dist/src/main.js",
+    "dev": "nest start --watch | pino-pretty",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:cov": "vitest --coverage",
+    "test:debug": "vitest --run"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^3.1.0",
+    "@nestjs/core": "^11.0.0",
+    "@opentelemetry/api": "^1.9.0",
+
+    "@turborepo/config": "workspace:*",
+    "@turborepo/assistant": "workspace:*",
+    "@turborepo/bucket": "workspace:*",
+    "@turborepo/database": "workspace:*",
+    "@turborepo/email": "workspace:*",
+    "@turborepo/llm": "workspace:*",
+    "@turborepo/logging": "workspace:*",
+    "@turborepo/messaging": "workspace:*",
+    "@turborepo/observability": "workspace:^",
+    "@turborepo/redis": "workspace:*",
+    "dotenv": "^16.1.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@repo/prettier-config": "workspace:*",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@types/node": "^22.10.7",
+    "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^9.18.0",
+    "pino-pretty": "^9.0.0",
+    "prettier": "^3.4.2",
+    "typescript": "6.0.0-dev.20251210",
+    "typescript-eslint": "^8.55.0",
+    "vitest": "^4.0.16"
+  }
+}

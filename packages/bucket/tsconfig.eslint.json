@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@turborepo/bucket": ["src"],
+      "@turborepo/*": ["../*/src", "../*/dist"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "src/test/**/*",
+    "src/**/*.spec.ts",
+    "tsup.config.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

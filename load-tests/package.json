@@ -1,0 +1,13 @@
+{
+  "name": "@repo/load-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:load:login": "artillery run login-scenario.yml",
+    "test:load:idempotency": "artillery run idempotency-scenario.yml",
+    "test:load:report": "artillery run --output report.json login-scenario.yml && artillery report report.json"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.30"
+  }
+}

@@ -1,0 +1,67 @@
+config:
+  target: "http://localhost:8082"
+  phases:
+    - duration: 1
+      arrivalCount: 1
+      name: "Admin Login and User Creation"
+  variables:
+    adminEmail: "admin@example.com"
+    adminPassword: "admin1234"
+  # beforeScenario hook generates a unique `runId` once per scenario execution.
+  # All 20 users in the same run share the prefix; re-runs never collide.
+  processor: "./helpers/idempotency-hooks.js"
+
+scenarios:
+  - name: "Idempotency Test - Create 20 Users"
+    beforeScenario: "setRunId"
+    flow:
+      # 1. Login as Admin via backend direto (porta 8082, sem prefix /api)
+      - post:
+          url: "/auth/login"
+          json:
+            email: "{{ adminEmail }}"
+            password: "{{ adminPassword }}"
+          capture:
+            - json: "$.accessToken"
+              as: "token"
+          expect:
+            - statusCode: 200
+
+      # 2. Criar 20 usuarios simultaneamente
+      # Cada criacao gera 1 mensagem no RabbitMQ para o worker processar
+      # O objetivo e validar que o worker consome todas as mensagens sem duplicatas (idempotencia)
+      - loop:
+          - post:
+              url: "/users"
+              headers:
+                Authorization: "Bearer {{ token }}"
+                Content-Type: "application/json"
+              json:
+                email: "test-{{ runId }}-{{ $loopElement }}@example.com"
+                name: "Test User {{ $loopElement }} [{{ runId }}]"
+                password: "password1234"
+              expect:
+                - statusCode:
+                    - 201
+                    - 409 # Idempotente: email ja existe em re-execucoes
+        over:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+          - 12
+          - 13
+          - 14
+          - 15
+          - 16
+          - 17
+          - 18
+          - 19
+          - 20

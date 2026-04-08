@@ -1,0 +1,34 @@
+{
+  "name": "@turborepo/bucket",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "prettier": "@repo/prettier-config",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.953.0",
+    "@aws-sdk/lib-storage": "^3.953.0",
+    "@turborepo/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "6.0.0-dev.20251210",
+    "vitest": "^4.0.16"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0"
+  }
+}

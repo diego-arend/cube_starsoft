@@ -1,0 +1,9 @@
+{
+  "node_version": "20",
+  "dockerfile_lines": ["RUN npm install -g pnpm"],
+  "env": ".env",
+  "graphs": {
+    "assistant": "./src/assistant/studio-entry.ts:graph"
+  },
+  "dependencies": ["."]
+}

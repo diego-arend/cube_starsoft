@@ -1,0 +1,90 @@
+FROM node:22-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /app
+
+# Stage 1: Prune the workspace
+FROM base AS pruner
+RUN pnpm add -g turbo
+COPY . .
+RUN turbo prune backend --docker --out-dir=out
+
+# Stage 2: Build the application
+FROM base AS builder
+# Production build hint
+ENV NODE_ENV=production
+
+# Install turbo in builder stage
+RUN pnpm add -g turbo
+
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml .
+# Use --frozen-lockfile for deterministic builds
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod=false
+
+COPY --from=pruner /app/out/full/ .
+# Remove generic config and any .env files — env vars are injected at runtime by
+# docker-compose (env_file), not copied into the image. Secrets never touch image layers.
+RUN rm -f config.yaml config.example.yaml && \
+    find . -name ".env*" -delete
+# Restore the original root turbo.json — turbo prune trims it to the target app, which
+# would break the "^build" dependency chain. By overwriting with the original we guarantee
+# that all workspace packages (assistant, bucket, config, database, email, llm, logging,
+# messaging, observability, rate-limit, redis) compile their own tsup build BEFORE the
+# backend app itself is compiled.
+COPY turbo.json turbo.json
+# "dependsOn: [\"^build\"]" in turbo.json causes Turbo to run the build task for every
+# @turborepo/* dependency (producing packages/*/dist/) before building the backend.
+RUN turbo run build --filter=backend
+
+# Stage 3: Extra clean production deps
+FROM base AS deps-prod
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
+
+# Stage 4: Production image
+FROM base AS runner
+ENV NODE_ENV=production
+# Allow the node user to write to PNPM_HOME so corepack can lazily download
+# the pnpm binary on-demand when running manual commands inside the container.
+# corepack enable is already set in the base stage — no need to pre-download
+# pnpm at image build time (saves ~70 MB compared to `corepack prepare`).
+RUN mkdir -p /pnpm && chown node:node /pnpm
+
+# Copy and register the entrypoint script before switching to the node user
+# so that chmod can run as root. The script checks DATABASE_MIGRATIONS_RUN and
+# executes compiled migrations before handing off to CMD.
+COPY docker/test-load/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER node
+WORKDIR /app
+
+# Copy production node_modules (prod-only virtual store — no devDeps)
+COPY --from=deps-prod --chown=node:node /app/node_modules ./node_modules
+COPY --from=deps-prod --chown=node:node /app/apps/backend/node_modules ./apps/backend/node_modules
+
+# Copy workspace packages from the builder stage.
+# Using builder (not deps-prod) here is intentional: pnpm creates per-package
+# node_modules/ with symlinks for peerDependencies (e.g. @nestjs/common in
+# packages/redis). These symlinks must match the virtual store that's in the
+# root node_modules. Both builder and deps-prod use the same pnpm-lock.yaml
+# with --frozen-lockfile, so the .pnpm hash paths are identical and the
+# symlinks resolve correctly against the prod-only root node_modules above.
+# Source .ts files add only a few MB and are unavoidable without a multi-stage
+# pruning step that Docker COPY doesn't natively support.
+COPY --from=builder --chown=node:node /app/packages ./packages
+
+# Copy app build artifacts
+COPY --from=builder --chown=node:node /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder --chown=node:node /app/apps/backend/package.json ./apps/backend/package.json
+
+# Root package.json is needed for corepack to resolve pnpm@9.0.0 when called manually.
+# turbo.json is NOT copied — not needed for `node dist/main` at runtime.
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+
+EXPOSE 3001
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["node", "apps/backend/dist/main"]

@@ -1,0 +1,46 @@
+{
+  "//": [
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "  ATENÇÃO: Este arquivo é exclusivo para o plugin Claude Code no VSCode.",
+    "  Para uso com GitHub Copilot, utilize o arquivo .vscode/mcp.json.",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    "SETUP PARA NOVOS DESENVOLVEDORES",
+    "─────────────────────────────────────────────────────────────────",
+    "1. Copie este arquivo: cp .mcp.example.json .mcp.json",
+    "2. Substitua os valores marcados com <PREENCHER> pelas chaves reais",
+    "3. O .mcp.json está no .gitignore — nunca comite suas chaves",
+    "4. Recarregue a janela do VSCode: Cmd+Shift+P → Developer: Reload Window",
+    "5. Verifique as conexões: digite /mcp no chat do Claude Code",
+    "─────────────────────────────────────────────────────────────────",
+    "",
+    "INSTALAÇÃO DO PLAYWRIGHT (obrigatória para o MCP funcionar)",
+    "─────────────────────────────────────────────────────────────────",
+    "  npm install -g @playwright/mcp@latest",
+    "  Verifique: playwright-mcp --version",
+    "─────────────────────────────────────────────────────────────────",
+    "",
+    "COMO OBTER AS CHAVES",
+    "─────────────────────────────────────────────────────────────────",
+    "  context7 → https://context7.com  (crie uma conta e gere a API key)",
+    "─────────────────────────────────────────────────────────────────",
+    "",
+    "MCPS DISPONÍVEIS",
+    "─────────────────────────────────────────────────────────────────",
+    "  context7   → documentação de libs em tempo real (requer API key)",
+    "  playwright → automação de browser (requer instalação global acima)"
+  ],
+  "mcpServers": {
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "<PREENCHER: sua API key do context7.com>"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "playwright-mcp"
+    }
+  }
+}

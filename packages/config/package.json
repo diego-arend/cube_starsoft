@@ -1,0 +1,64 @@
+{
+  "name": "@turborepo/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.mjs",
+      "require": "./dist/node.js"
+    },
+    "./load": {
+      "types": "./dist/load.d.ts",
+      "import": "./dist/load.mjs",
+      "require": "./dist/load.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "node": [
+        "./dist/node.d.ts"
+      ],
+      "load": [
+        "./dist/load.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "lint": "eslint . --ext .ts --fix",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "validate": "pnpm run build && node --trace-warnings ./dist/cli/validate-config.mjs",
+    "generate-frontend-env": "tsx src/bin/generate-env.ts",
+    "generate-backend-env": "tsx src/bin/generate-backend-env.ts",
+    "generate-worker-env": "tsx src/bin/generate-worker-env.ts",
+    "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
+  },
+  "dependencies": {
+    "yaml": "^2.2.2",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@repo/prettier-config": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^3.1.0",
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.1",
+    "tsx": "^4.21.0",
+    "typescript": "6.0.0-dev.20251210",
+    "vitest": "^4.0.16"
+  },
+  "peerDependencies": {
+    "@nestjs/config": "^3.1.0"
+  }
+}

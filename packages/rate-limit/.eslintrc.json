@@ -1,0 +1,8 @@
+{
+  "extends": "@repo/eslint-config/nest",
+  "languageOptions": {
+    "parserOptions": {
+      "project": ["./tsconfig.eslint.json"]
+    }
+  }
+}

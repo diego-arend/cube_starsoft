@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@source "../../../../packages/ui/src";
+
+/* Import shared theme and base styles from UI package */
+@import "../../../../packages/ui/src/index.css";

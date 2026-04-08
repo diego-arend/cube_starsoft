@@ -1,0 +1,35 @@
+{
+  "name": "@turborepo/redis",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "prettier": "@repo/prettier-config",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\""
+  },
+  "dependencies": {
+    "@turborepo/config": "workspace:*",
+    "ioredis": "^5.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/testing": "^11.0.1",
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "6.0.0-dev.20251210",
+    "vitest": "^4.0.16"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0"
+  }
+}

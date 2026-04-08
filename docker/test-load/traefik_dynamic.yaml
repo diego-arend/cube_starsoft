@@ -1,0 +1,84 @@
+http:
+  routers:
+    frontend-otel:
+      rule: "PathPrefix(`/api/otel`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 200
+    frontend-auth:
+      rule: "PathPrefix(`/api/auth`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 200
+    backend-api:
+      rule: "PathPrefix(`/api`)"
+      service: backend-service
+      entryPoints:
+        - web
+      priority: 100
+      middlewares:
+        - backend-strip
+    backend-socket:
+      rule: "PathPrefix(`/socket.io`)"
+      service: backend-service
+      entryPoints:
+        - web
+      priority: 200
+    frontend-web:
+      rule: "PathPrefix(`/web`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 2
+      middlewares:
+        - frontend-strip-web
+    frontend:
+      rule: "PathPrefix(`/`)"
+      service: frontend-service
+      entryPoints:
+        - web
+      priority: 1
+    backend-direct:
+      rule: "PathPrefix(`/`)"
+      service: backend-service
+      entryPoints:
+        - backendweb
+      priority: 1
+  middlewares:
+    backend-strip:
+      stripPrefix:
+        prefixes:
+          - "/api"
+    frontend-strip-web:
+      stripPrefix:
+        prefixes:
+          - "/web"
+  services:
+    backend-service:
+      loadBalancer:
+        # Forward the original Host header so NestJS/Socket.IO origin checks pass.
+        passHostHeader: true
+        # Use the WebSocket-safe transport (no response-header timeout, generous
+        # idle-connection window). Sticky sessions are NOT needed because the
+        # backend uses the Socket.IO Redis adapter — any replica can handle any
+        # client connection transparently.
+        serversTransport: backend-ws-transport
+        servers:
+          - url: "http://backend:3001"
+    frontend-service:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:3000"
+
+  serversTransports:
+    backend-ws-transport:
+      # responseHeaderTimeout=0 disables the timeout while waiting for the first
+      # response byte — critical for WebSocket upgrade handshakes and long-poll
+      # connections that may pause for several seconds.
+      # idleConnTimeout=3600s keeps WebSocket/keep-alive connections in the pool
+      # for up to one hour instead of the default 90 s.
+      forwardingTimeouts:
+        responseHeaderTimeout: "0s"
+        idleConnTimeout: "3600s"
