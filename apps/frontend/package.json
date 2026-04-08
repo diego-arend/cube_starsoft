@@ -58,7 +58,8 @@
     "socket.io-client": "^4.8.3",
     "uuid": "^11.1.0",
     "zod": "^3.25.76",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "three": "^0.176.0"
   },
   "dependenciesMeta": {
     "@turborepo/config": {}
@@ -77,6 +78,7 @@
     "jsdom": "^27.4.0",
     "pino-pretty": "^9.0.0",
     "postcss": "^8.4.32",
+    "@types/three": "^0.176.0",
     "prettier": "^3.4.2",
     "tailwindcss": "4",
     "typescript": "6.0.0-dev.20251210",

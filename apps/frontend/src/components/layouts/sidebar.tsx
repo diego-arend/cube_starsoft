@@ -11,7 +11,7 @@ import {
   SheetDescription,
 } from "@turborepo/ui";
 import { useSession } from "next-auth/react";
-import { Menu, Users, Bot, Database } from "lucide-react";
+import { Menu, Users, Bot, Database, Box } from "lucide-react";
 import { useState } from "react";
 
 const sidebarItems = [
@@ -19,6 +19,12 @@ const sidebarItems = [
     title: "Assistentes de IA",
     href: "/assistant",
     icon: Bot,
+    roles: ["USER", "ADMIN"],
+  },
+  {
+    title: "Cube",
+    href: "/cube",
+    icon: Box,
     roles: ["USER", "ADMIN"],
   },
   {
@@ -61,7 +67,7 @@ function SidebarContent({ onItemClick }: SidebarContentProps) {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground text-xl">
             ET
           </div>
-          <span className="text-xl font-bold text-primary">ENGECOMP-IA</span>
+          <span className="text-xl font-bold text-primary">CUBE STARSOFT</span>
         </div>
         <div className="space-y-1">
           {filteredItems.map((item) => {
