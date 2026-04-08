@@ -10,7 +10,7 @@ export * from "./annotations";
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]),
   HOSTNAME: z.string(),
-  PORT: z.coerce.number(),
+  PORT: z.coerce.number().optional(),
   DATABASE_URL: z.string(),
 
   DATABASE_HOST: z.string(),
@@ -178,6 +178,8 @@ export const EnvSchema = z.object({
   // Frontend related (also needed by server in some cases)
   NEXT_PUBLIC_API_URL: z.string().optional(),
   NEXT_PUBLIC_SOCKET_URL: z.string().optional(),
+  FRONTEND_PORT: z.coerce.number().optional(),
+  BACKEND_PORT: z.coerce.number().optional(),
   API_URL: z.string().optional(),
   NEXT_PUBLIC_OTEL_ENABLED: z.string().optional(),
   NEXT_PUBLIC_OTEL_SERVICE_NAME: z.string().optional(),

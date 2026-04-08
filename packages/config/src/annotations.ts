@@ -19,6 +19,17 @@ export const EnvAnnotations: Record<
     description:
       "WebSocket URL used by the browser for assistant and real-time features",
   },
+  FRONTEND_PORT: {
+    safeForFrontend: true,
+    description: "Specific port for the frontend defined in its context",
+  },
+  BACKEND_PORT: {
+    description: "Specific port for the backend defined in its context",
+  },
+  PORT: {
+    safeForFrontend: true,
+    description: "Port used by the application (backend or frontend)",
+  },
   API_URL: {
     safeForFrontend: true,
     description: "Internal API URL used by Next.js Server Components",

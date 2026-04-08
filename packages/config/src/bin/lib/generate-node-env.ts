@@ -73,7 +73,13 @@ export function generateNodeEnv({
     })
     .map(([key, value]) => {
       if (value === undefined) return null;
-      return `${key}="${String(value).replace(/"/g, '\\"')}"`;
+      let finalKey = key;
+      if (appName === "Backend" && key === "BACKEND_PORT") {
+        finalKey = "PORT";
+      } else if (appName === "Worker" && key === "WORKER_PORT") {
+        finalKey = "PORT";
+      }
+      return `${finalKey}="${String(value).replace(/"/g, '\\"')}"`;
     })
     .filter(Boolean)
     .join("\n");

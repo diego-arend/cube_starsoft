@@ -16,7 +16,6 @@ export function parseYamlToFlatEnv(content: string) {
       if (typeof v === "object" && v !== null && !Array.isArray(v)) {
         Object.assign(results, flatten(v as Record<string, unknown>, key));
       } else {
-        // special auth mappings to top-level JWT_* keys
         if (parentKey.toLowerCase() === "auth") {
           const lk = k.toLowerCase();
           if (lk === "jwt_secret") results[`JWT_SECRET`] = String(v);
@@ -60,8 +59,9 @@ export function parseYamlToFlatEnv(content: string) {
           results[`REDIS_${k.toUpperCase()}`] = String(v);
         } else if (parentKey.toLowerCase() === "server") {
           const lk = k.toLowerCase();
-          if (lk === "port") results["PORT"] = String(v);
-          else if (lk === "node_env") results["NODE_ENV"] = String(v);
+          if (lk === "port") {
+            // results["PORT"] = String(v); // Removed to avoid global collision
+          } else if (lk === "node_env") results["NODE_ENV"] = String(v);
           else if (lk === "hostname") results["HOSTNAME"] = String(v);
           else if (lk === "shutdown_timeout") {
             results["SHUTDOWN_TIMEOUT"] = String(v);
@@ -80,7 +80,9 @@ export function parseYamlToFlatEnv(content: string) {
         } else if (parentKey.toLowerCase() === "frontend") {
           const ck = k.toUpperCase();
           const lk = k.toLowerCase();
-          if (ck.startsWith("NEXT_PUBLIC_")) {
+          if (lk === "port") {
+            results["FRONTEND_PORT"] = String(v);
+          } else if (ck.startsWith("NEXT_PUBLIC_")) {
             results[ck] = String(v);
           } else if (lk === "api_url") {
             // Only set NEXT_PUBLIC_API_URL if not already set by next_public_api_url
@@ -116,7 +118,9 @@ export function parseYamlToFlatEnv(content: string) {
           }
         } else if (parentKey.toLowerCase() === "backend") {
           const lk = k.toLowerCase();
-          if (lk === "otlp_endpoint") {
+          if (lk === "port") {
+            results["BACKEND_PORT"] = String(v);
+          } else if (lk === "otlp_endpoint") {
             results[`BACKEND_OTEL_EXPORTER_OTLP_ENDPOINT`] = String(v);
           } else if (lk === "service_name") {
             results[`BACKEND_OTEL_SERVICE_NAME`] = String(v);

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "prettier": "@repo/prettier-config",
   "scripts": {
-    "dev": "next dev | pino-pretty",
+    "dev": "set -a && . ./.env && set +a && next dev --port $PORT | pino-pretty",
     "predev": "pnpm --filter @turborepo/config build && pnpm --filter @turborepo/config generate-frontend-env",
     "prebuild": "pnpm --filter @turborepo/config build && [ -f ../../config.yaml ] && pnpm --filter @turborepo/config generate-frontend-env || true",
     "build": "next build",
