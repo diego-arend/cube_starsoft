@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { cn } from "@turborepo/ui";
 import {
   SceneController,
   type SceneStats,
 } from "@/components/cube/scene-controller";
+
+interface FloatingLabel {
+  id: number;
+  x: number;
+  y: number;
+}
+
+let _labelId = 0;
 
 export function CubeViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -17,6 +25,20 @@ export function CubeViewer() {
     fps: 0,
     hint: "Duplo clique em uma face para selecionar",
   });
+  const [labels, setLabels] = useState<FloatingLabel[]>([]);
+
+  const handleSquareClick = useCallback((screenX: number, screenY: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const id = ++_labelId;
+    const x = screenX - rect.left;
+    const y = screenY - rect.top;
+    setLabels((prev) => [...prev, { id, x, y }]);
+    setTimeout(() => {
+      setLabels((prev) => prev.filter((l) => l.id !== id));
+    }, 2000);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -27,6 +49,7 @@ export function CubeViewer() {
     controllerRef.current = ctrl;
 
     ctrl.onStats(setStats);
+    ctrl.onSquareClick = handleSquareClick;
     ctrl.startLoop();
 
     const observer = new ResizeObserver((entries) => {
@@ -42,7 +65,7 @@ export function CubeViewer() {
       ctrl.dispose();
       controllerRef.current = null;
     };
-  }, []);
+  }, [handleSquareClick]);
 
   const modeBadgeColor: Record<string, string> = {
     solid: "bg-blue-600",
@@ -59,6 +82,22 @@ export function CubeViewer() {
   return (
     <div ref={containerRef} className="relative w-full h-full bg-[#1a1a2e]">
       <canvas ref={canvasRef} className="w-full h-full block" />
+
+      {/* Floating +1 labels */}
+      {labels.map((label) => (
+        <span
+          key={label.id}
+          className="pointer-events-none absolute select-none font-bold text-green-400 text-lg"
+          style={{
+            left: label.x,
+            top: label.y,
+            transform: "translate(-50%, -50%)",
+            animation: "floatUp 2s ease-out forwards",
+          }}
+        >
+          +1
+        </span>
+      ))}
 
       {/* Top-left HUD */}
       <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">

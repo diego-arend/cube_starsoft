@@ -94,11 +94,11 @@ export class CameraController {
     return 1 + Math.max(distFromFaceV, distFromFaceH) * 1.08;
   }
 
-  /** Max zoom = 8 chunks (2 cols × 4 rows) filling the screen */
+  /** Max zoom = 4 chunks (~2×2) filling the screen */
   private _computeFaceMinDist(): number {
     const tileWorldSize = (32 / 707) * 2;
-    // 4 tiles across horizontal half → half-width of 4 tiles
-    const tileHalf = 1 * tileWorldSize;
+    // 0.75 tiles per half-width → ≈4 total chunks at max zoom in 16:9 landscape
+    const tileHalf = 0.75 * tileWorldSize;
     const vHalfRad = (this.camera.fov * Math.PI) / 180 / 2;
     const hHalfRad = Math.atan(Math.tan(vHalfRad) * this.camera.aspect);
     const distV = tileHalf / Math.tan(vHalfRad);
@@ -142,7 +142,10 @@ export class CameraController {
     }
 
     const factor = zoomOut ? this.FACE_ZOOM_FACTOR : 1 / this.FACE_ZOOM_FACTOR;
-    const newDist = Math.min(maxDist, Math.max(this._faceMinDist, dist * factor));
+    const newDist = Math.min(
+      maxDist,
+      Math.max(this._faceMinDist, dist * factor)
+    );
     if (Math.abs(newDist - dist) < 1e-6) return;
 
     // Move camera along face normal, target stays fixed
@@ -221,6 +224,10 @@ export class CameraController {
     return this._isAnimating;
   }
 
+  get faceNormal(): THREE.Vector3 {
+    return this._faceNormal;
+  }
+
   get faceFitDist(): number {
     return this._faceFitDist;
   }
@@ -292,7 +299,11 @@ export class CameraController {
       this.animProgress += deltaSeconds / this.animDuration;
       const t = easeInOutCubic(Math.min(1, this.animProgress));
       this.camera.position.lerpVectors(this.animFromPos, this.animToPos, t);
-      this.controls.target.lerpVectors(this.animFromTarget, this.animToTarget, t);
+      this.controls.target.lerpVectors(
+        this.animFromTarget,
+        this.animToTarget,
+        t
+      );
       this.camera.lookAt(this.controls.target);
 
       if (this.animProgress >= 1) {
