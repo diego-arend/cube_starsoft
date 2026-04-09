@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { CameraController } from "./camera-controller";
 import { RepresentationManager } from "./representation-manager";
 import { FaceSelectionManager } from "./face-selection-manager";
-import { ChunkManager } from "./chunk-manager";
+import { ChunkManager, TILE_WORLD_SIZE, SQUARE_STEP, SQUARE_SIZE, CUBE_DEPTH, type RemovedSquare } from "./chunk-manager";
 import { TILES_PER_SIDE, TILE_SIZE, type FaceId } from "./cube-data-model";
 
 const FACE_NORMALS_LOOKUP: Array<{ normal: THREE.Vector3; id: FaceId }> = [
@@ -62,6 +62,10 @@ export class SceneController {
   private readonly highlightGroup: THREE.Group;
   private _hoverHighlight: THREE.Mesh | null = null;
   private _hoveredSquareKey: string | null = null;
+  /** Group holding dark-spot quads painted on the solid cube when chunks are removed */
+  private readonly darkSpotsGroup: THREE.Group;
+  private _spotGeo: THREE.PlaneGeometry | null = null;
+  private _spotMat: THREE.MeshBasicMaterial | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -71,11 +75,11 @@ export class SceneController {
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a2e);
+    this.scene.background = new THREE.Color(0x0f111a);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.55);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-    dirLight.position.set(5, 8, 6);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(5, 10, 8);
     this.scene.add(ambient, dirLight);
 
     this.solidGroup = new THREE.Group();
@@ -89,6 +93,8 @@ export class SceneController {
       this.highlightGroup
     );
 
+    this.darkSpotsGroup = new THREE.Group();
+    this.solidGroup.add(this.darkSpotsGroup);
     this._buildSolidCube();
     this._buildFacePlanes();
 
@@ -120,11 +126,11 @@ export class SceneController {
 
   private _buildSolidCube(): void {
     const geo = new THREE.BoxGeometry(2, 2, 2);
-    const mat = new THREE.MeshPhongMaterial({ color: 0x4a90d9, shininess: 40 });
+    const mat = new THREE.MeshPhongMaterial({ color: 0xa0aab8, shininess: 30 });
     this.cubeMesh = new THREE.Mesh(geo, mat);
 
     const edges = new THREE.EdgesGeometry(geo);
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x8ab8e0 });
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xccd5df });
     const wireframe = new THREE.LineSegments(edges, lineMat);
 
     this.solidGroup.add(this.cubeMesh, wireframe);
@@ -211,37 +217,37 @@ export class SceneController {
       {
         position: new THREE.Vector3(1.001, 0, 0),
         rotation: new THREE.Euler(0, Math.PI / 2, 0),
-        color: 0x4a90d9,
+        color: 0x6e7a8a,
         normalDir: new THREE.Vector3(1, 0, 0),
       },
       {
         position: new THREE.Vector3(-1.001, 0, 0),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        color: 0x4a90d9,
+        color: 0x6e7a8a,
         normalDir: new THREE.Vector3(-1, 0, 0),
       },
       {
         position: new THREE.Vector3(0, 1.001, 0),
         rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
-        color: 0x4a90d9,
+        color: 0x6e7a8a,
         normalDir: new THREE.Vector3(0, 1, 0),
       },
       {
         position: new THREE.Vector3(0, -1.001, 0),
         rotation: new THREE.Euler(Math.PI / 2, 0, 0),
-        color: 0x4a90d9,
+        color: 0x6e7a8a,
         normalDir: new THREE.Vector3(0, -1, 0),
       },
       {
         position: new THREE.Vector3(0, 0, 1.001),
         rotation: new THREE.Euler(0, 0, 0),
-        color: 0x4a90d9,
+        color: 0x6e7a8a,
         normalDir: new THREE.Vector3(0, 0, 1),
       },
       {
         position: new THREE.Vector3(0, 0, -1.001),
         rotation: new THREE.Euler(0, Math.PI, 0),
-        color: 0x4a90d9,
+        color: 0x6e7a8a,
         normalDir: new THREE.Vector3(0, 0, -1),
       },
     ];
@@ -273,59 +279,26 @@ export class SceneController {
     const rect = this.canvas.getBoundingClientRect();
     const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    this.raycaster.setFromCamera(
-      new THREE.Vector2(ndcX, ndcY),
-      this.cameraController.camera
-    );
+    this.cameraController.camera.updateMatrixWorld();
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.cameraController.camera);
 
-    const tileMeshes: THREE.Mesh[] = [];
+    const instancedMeshes: THREE.InstancedMesh[] = [];
     this.chunkGroup.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        tileMeshes.push(obj as THREE.Mesh);
+      if ((obj as THREE.InstancedMesh).isInstancedMesh && !obj.userData.isHover) {
+        instancedMeshes.push(obj as THREE.InstancedMesh);
       }
     });
 
-    const hits = this.raycaster.intersectObjects(tileMeshes, false);
-    if (hits.length > 0) {
+    const hits = this.raycaster.intersectObjects(instancedMeshes, false);
+    if (hits.length > 0 && hits[0]!.instanceId !== undefined) {
       const hit = hits[0]!;
-      const hitPoint = hit.point.clone();
-      const faceNormal = this.cameraController.faceNormal.clone().normalize();
-
-      const squareSize = (2 / 707) * 0.92;
-      const tileMesh = hit.object as THREE.Mesh;
-      const tileGroup = tileMesh.parent as THREE.Group;
-      const tileWidth = (32 / 707) * 2 * 0.9998;
-
-      const col = Math.min(
-        TILE_SIZE - 1,
-        Math.max(0, Math.floor(hit.uv?.x ?? 0 * TILE_SIZE))
-      );
-      const row = Math.min(
-        TILE_SIZE - 1,
-        Math.max(0, Math.floor(hit.uv?.y ?? 0 * TILE_SIZE))
-      );
-      const squareKey = `${tileGroup.name}:${col}:${row}`;
-
-      const localX = -tileWidth / 2 + (col + 0.5) * (tileWidth / TILE_SIZE);
-      const localY = -tileWidth / 2 + (row + 0.5) * (tileWidth / TILE_SIZE);
-      const highlightGeo = new THREE.PlaneGeometry(squareSize, squareSize);
-      const highlightMat = new THREE.MeshBasicMaterial({
-        color: 0x1b6eff,
-        transparent: true,
-        opacity: 0.45,
-        depthTest: false,
-      });
-      const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
-      highlightMesh.position.set(localX, localY, 0.002);
-      highlightMesh.scale.set(0.92, 0.92, 1);
-      highlightMesh.userData.squareKey = squareKey;
-      tileGroup.add(highlightMesh);
-
-      setTimeout(() => {
-        tileGroup.remove(highlightMesh);
-        highlightGeo.dispose();
-        highlightMat.dispose();
-      }, 150);
+      const instanceId = hit.instanceId!;
+      const col = instanceId % TILE_SIZE;
+      const row = Math.floor(instanceId / TILE_SIZE);
+      const tileGroup = hit.object.parent as THREE.Group;
+      this.chunkManager.hideSquare(tileGroup.name, col, row);
+      // Clear hover so it doesn't linger over the removed cube
+      this._clearHoverHighlight();
     }
 
     this.onSquareClick?.(e.clientX, e.clientY);
@@ -351,62 +324,41 @@ export class SceneController {
     const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // Force camera matrixWorld to reflect the latest position/quaternion before
-    // raycasting. In face mode controls.update() and scene.updateMatrixWorld()
-    // only run during the render tick. Between a pan/zoom and the next render,
-    // matrixWorld can be one frame stale, producing wrong ray origins especially
-    // at screen corners and at high zoom levels.
+    // Force camera matrixWorld before raycasting to prevent frame-stale ray origins.
     this.cameraController.camera.updateMatrixWorld();
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.cameraController.camera);
 
-    this.raycaster.setFromCamera(
-      new THREE.Vector2(ndcX, ndcY),
-      this.cameraController.camera
-    );
-
-    const tileMeshes: THREE.Mesh[] = [];
+    const instancedMeshes: THREE.InstancedMesh[] = [];
     this.chunkGroup.traverse((obj) => {
-      // Exclude hover highlight meshes — their UV space covers only 1 square,
-      // so raycasting them produces wrong col/row for the squareKey lookup.
-      if ((obj as THREE.Mesh).isMesh && !obj.userData.isHover) {
-        tileMeshes.push(obj as THREE.Mesh);
+      if ((obj as THREE.InstancedMesh).isInstancedMesh && !obj.userData.isHover) {
+        instancedMeshes.push(obj as THREE.InstancedMesh);
       }
     });
 
-    const hits = this.raycaster.intersectObjects(tileMeshes, false);
-    if (!hits.length) {
+    const hits = this.raycaster.intersectObjects(instancedMeshes, false);
+    if (!hits.length || hits[0]!.instanceId === undefined) {
       this._clearHoverHighlight();
       return;
     }
 
     const hit = hits[0]!;
-    const tileMesh = hit.object as THREE.Mesh;
-    const tileGroup = tileMesh.parent as THREE.Group;
-
-    // Convert world-space hit point to tile group local space.
-    // This is immune to UV triangle interpolation artifacts — localX/Y are in
-    // the exact same coordinate system as the grid lines and highlight quads.
-    const tileWidth = (32 / 707) * 2 * 0.9998;
-    const hitLocal = tileGroup.worldToLocal(hit.point.clone());
-    const step = tileWidth / TILE_SIZE;
-    const col = Math.min(
-      TILE_SIZE - 1,
-      Math.max(0, Math.floor((hitLocal.x + tileWidth / 2) / step))
-    );
-    const row = Math.min(
-      TILE_SIZE - 1,
-      Math.max(0, Math.floor((hitLocal.y + tileWidth / 2) / step))
-    );
+    const instanceId = hit.instanceId!;
+    const col = instanceId % TILE_SIZE;
+    const row = Math.floor(instanceId / TILE_SIZE);
+    const tileGroup = hit.object.parent as THREE.Group;
     const squareKey = `${tileGroup.name}:${col}:${row}`;
     if (squareKey === this._hoveredSquareKey) return;
 
     this._clearHoverHighlight();
     this._hoveredSquareKey = squareKey;
 
-    const squareSize = (tileWidth / TILE_SIZE) * 0.94;
-    const localX = -tileWidth / 2 + (col + 0.5) * step;
-    const localY = -tileWidth / 2 + (row + 0.5) * step;
+    // Get instance local position from matrix for pixel-perfect hover placement
+    const instMatrix = new THREE.Matrix4();
+    (hit.object as THREE.InstancedMesh).getMatrixAt(instanceId, instMatrix);
+    const instPos = new THREE.Vector3().setFromMatrixPosition(instMatrix);
 
-    const hoverGeo = new THREE.PlaneGeometry(squareSize, squareSize);
+    const hoverSize = SQUARE_SIZE * 0.96;
+    const hoverGeo = new THREE.PlaneGeometry(hoverSize, hoverSize);
     const hoverMat = new THREE.MeshBasicMaterial({
       color: 0x00cfff,
       transparent: true,
@@ -414,14 +366,59 @@ export class SceneController {
       depthTest: false,
     });
     const hoverMesh = new THREE.Mesh(hoverGeo, hoverMat);
-    hoverMesh.position.set(localX, localY, 0.003);
-    hoverMesh.scale.set(1.0, 1.0, 1);
-    hoverMesh.userData.isHover = true; // exclude from raycasting in _onPointerMove
+    // Position on top face of the mini-cube: z = cube center + half depth
+    hoverMesh.position.set(instPos.x, instPos.y, instPos.z + CUBE_DEPTH / 2 + 0.001);
+    hoverMesh.userData.isHover = true;
     tileGroup.add(hoverMesh);
     this._hoverHighlight = hoverMesh;
   }
 
   private _suppressNextClick = false;
+
+  private _updateDarkSpots(): void {
+    // Clear existing spots
+    while (this.darkSpotsGroup.children.length > 0) {
+      this.darkSpotsGroup.remove(this.darkSpotsGroup.children[0]!);
+    }
+    this._spotGeo?.dispose();
+    this._spotMat?.dispose();
+    this._spotGeo = null;
+    this._spotMat = null;
+
+    const removed = this.chunkManager.getRemovedSquares(this._activeFace);
+    if (!removed.length) return;
+
+    // Force chunk group matrices in sync (chunkGroup is hidden but still in scene graph)
+    this.chunkGroup.updateWorldMatrix(true, true);
+
+    this._spotGeo = new THREE.PlaneGeometry(SQUARE_SIZE * 0.8, SQUARE_SIZE * 0.8);
+    this._spotMat = new THREE.MeshBasicMaterial({
+      color: 0x111111,
+      transparent: true,
+      opacity: 0.82,
+      polygonOffset: true,
+      polygonOffsetFactor: 3,
+      polygonOffsetUnits: 3,
+    });
+
+    const _tmpQuat = new THREE.Quaternion();
+    for (const sq of removed) {
+      const entry = this.chunkManager.getTileGroup(sq.tileKey);
+      if (!entry) continue;
+      const half = TILE_WORLD_SIZE / 2;
+      const localPos = new THREE.Vector3(
+        -half + (sq.col + 0.5) * SQUARE_STEP,
+        -half + (sq.row + 0.5) * SQUARE_STEP,
+        0.004
+      );
+      const worldPos = entry.group.localToWorld(localPos);
+      const mesh = new THREE.Mesh(this._spotGeo, this._spotMat);
+      mesh.position.copy(worldPos);
+      entry.group.getWorldQuaternion(_tmpQuat);
+      mesh.quaternion.copy(_tmpQuat);
+      this.darkSpotsGroup.add(mesh);
+    }
+  }
 
   private _onDblClick(e: MouseEvent): void {
     this._suppressNextClick = true;
@@ -477,6 +474,7 @@ export class SceneController {
   }
 
   private _returnToCube(): void {
+    this._updateDarkSpots();
     this.representationManager.forceMode("solid");
     this._hint = "Voltando ao cubo…";
 
@@ -510,6 +508,7 @@ export class SceneController {
       if (delta > 0) this.fps = Math.round(1 / delta);
 
       this.cameraController.update(delta);
+      this.chunkManager.update(delta);
 
       this.statsFrame++;
       if (this.statsFrame % 20 === 0 && this.statsCallback) {
@@ -537,6 +536,8 @@ export class SceneController {
     this.canvas.removeEventListener("dblclick", this._boundDblClick);
     this.canvas.removeEventListener("click", this._boundClick);
     this.canvas.removeEventListener("pointermove", this._boundPointerMove);
+    this._spotGeo?.dispose();
+    this._spotMat?.dispose();
     this.chunkManager.dispose();
     this.cameraController.dispose();
     this.renderer.dispose();

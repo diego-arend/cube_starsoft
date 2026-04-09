@@ -8,7 +8,13 @@ import {
   SQUARES_PER_SIDE,
 } from "./cube-data-model";
 
-const CUBE_HALF = 1; // cube goes from -1 to +1
+const CUBE_HALF = 1;
+
+// ─── World-space dimensions (exported so scene-controller can reuse) ──────────
+export const TILE_WORLD_SIZE = (TILE_SIZE / SQUARES_PER_SIDE) * CUBE_HALF * 2;
+export const SQUARE_STEP     = TILE_WORLD_SIZE / TILE_SIZE;
+export const SQUARE_SIZE     = SQUARE_STEP * 0.82;   // 18 % gap between cubes
+export const CUBE_DEPTH      = SQUARE_SIZE * 0.5;    // depth = half of face width
 
 const FACE_NORMALS: Record<FaceId, THREE.Vector3> = {
   "+X": new THREE.Vector3(1, 0, 0),
@@ -19,7 +25,6 @@ const FACE_NORMALS: Record<FaceId, THREE.Vector3> = {
   "-Z": new THREE.Vector3(0, 0, -1),
 };
 
-/** Maps FaceId to the axis/sign used when placing tiles in 3D */
 function tileToTransform(tile: TileDescriptor): {
   position: THREE.Vector3;
   rotation: THREE.Euler;
@@ -31,91 +36,75 @@ function tileToTransform(tile: TileDescriptor): {
 
   switch (tile.face) {
     case "+X":
-      return {
-        position: new THREE.Vector3(CUBE_HALF, ny * CUBE_HALF, -nx * CUBE_HALF),
-        rotation: new THREE.Euler(0, Math.PI / 2, 0),
-      };
+      return { position: new THREE.Vector3(CUBE_HALF, ny * CUBE_HALF, -nx * CUBE_HALF), rotation: new THREE.Euler(0, Math.PI / 2, 0) };
     case "-X":
-      return {
-        position: new THREE.Vector3(-CUBE_HALF, ny * CUBE_HALF, nx * CUBE_HALF),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-      };
+      return { position: new THREE.Vector3(-CUBE_HALF, ny * CUBE_HALF, nx * CUBE_HALF), rotation: new THREE.Euler(0, -Math.PI / 2, 0) };
     case "+Y":
-      return {
-        position: new THREE.Vector3(nx * CUBE_HALF, CUBE_HALF, ny * CUBE_HALF),
-        rotation: new THREE.Euler(-Math.PI / 2, 0, 0),
-      };
+      return { position: new THREE.Vector3(nx * CUBE_HALF, CUBE_HALF, ny * CUBE_HALF), rotation: new THREE.Euler(-Math.PI / 2, 0, 0) };
     case "-Y":
-      return {
-        position: new THREE.Vector3(
-          nx * CUBE_HALF,
-          -CUBE_HALF,
-          -ny * CUBE_HALF
-        ),
-        rotation: new THREE.Euler(Math.PI / 2, 0, 0),
-      };
+      return { position: new THREE.Vector3(nx * CUBE_HALF, -CUBE_HALF, -ny * CUBE_HALF), rotation: new THREE.Euler(Math.PI / 2, 0, 0) };
     case "+Z":
-      return {
-        position: new THREE.Vector3(nx * CUBE_HALF, ny * CUBE_HALF, CUBE_HALF),
-        rotation: new THREE.Euler(0, 0, 0),
-      };
+      return { position: new THREE.Vector3(nx * CUBE_HALF, ny * CUBE_HALF, CUBE_HALF), rotation: new THREE.Euler(0, 0, 0) };
     case "-Z":
     default:
-      return {
-        position: new THREE.Vector3(
-          -nx * CUBE_HALF,
-          ny * CUBE_HALF,
-          -CUBE_HALF
-        ),
-        rotation: new THREE.Euler(0, Math.PI, 0),
-      };
+      return { position: new THREE.Vector3(-nx * CUBE_HALF, ny * CUBE_HALF, -CUBE_HALF), rotation: new THREE.Euler(0, Math.PI, 0) };
   }
 }
 
-/**
- * Builds a lightweight grid LineSegments for a tile.
- * Draws TILE_SIZE+1 horizontal and TILE_SIZE+1 vertical lines,
- * representing the borders of each individual square.
- * Total: (TILE_SIZE+1)*2 line segments = 66 lines for TILE_SIZE=32.
- */
-function buildGridLines(scaleXY: number): THREE.LineSegments {
-  const half = scaleXY / 2;
-  const step = scaleXY / TILE_SIZE;
-  const positions: number[] = [];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-  // Horizontal lines
-  for (let i = 0; i <= TILE_SIZE; i++) {
-    const y = -half + i * step;
-    positions.push(-half, y, 0, half, y, 0);
-  }
-  // Vertical lines
-  for (let i = 0; i <= TILE_SIZE; i++) {
-    const x = -half + i * step;
-    positions.push(x, -half, 0, x, half, 0);
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  const mat = new THREE.LineBasicMaterial({
-    color: 0xffffff,
-    opacity: 0.25,
-    transparent: true,
-  });
-  return new THREE.LineSegments(geo, mat);
+interface TileCacheEntry {
+  group: THREE.Group;
+  instanced: THREE.InstancedMesh;
 }
 
-/**
- * Manages the creation, caching, and disposal of 2D chunk groups
- * for the active cube face.
- * Each group contains: a solid colored Mesh + a grid LineSegments overlay.
- */
+interface HideAnimation {
+  instanced: THREE.InstancedMesh;
+  idx: number;
+  progress: number; // 0 → 1 over HIDE_DURATION seconds
+  startMatrix: THREE.Matrix4;
+}
+
+export interface RemovedSquare {
+  tileKey: string;
+  tileX: number;
+  tileY: number;
+  face: FaceId;
+  col: number;
+  row: number;
+}
+
+const HIDE_DURATION = 0.3; // seconds
+const COLOR_A = new THREE.Color(0xa0aab8);
+const COLOR_B = new THREE.Color(0x8a94a0);
+
+// ─── ChunkManager ─────────────────────────────────────────────────────────────
+
 export class ChunkManager {
   private readonly group: THREE.Group;
-  private readonly cache = new Map<string, THREE.Group>();
+  private readonly cache = new Map<string, TileCacheEntry>();
   private currentFace: FaceId | null = null;
+
+  /** Removed squares: tileKey → Set<col * TILE_SIZE + row> */
+  private readonly _removed = new Map<string, Set<number>>();
+  /** Active hide animations */
+  private readonly _hiding = new Map<string, HideAnimation>();
+
+  private readonly _sharedGeo: THREE.BoxGeometry;
+  private readonly _sharedMat: THREE.MeshPhongMaterial;
 
   constructor(group: THREE.Group) {
     this.group = group;
+    this._sharedGeo = new THREE.BoxGeometry(SQUARE_SIZE, SQUARE_SIZE, CUBE_DEPTH);
+    this._sharedMat = new THREE.MeshPhongMaterial({
+      color: 0xffffff,
+      shininess: 30,
+      specular: new THREE.Color(0x444444),
+    });
+  }
+
+  get currentFaceId(): FaceId | null {
+    return this.currentFace;
   }
 
   updateFace(face: FaceId): void {
@@ -125,76 +114,160 @@ export class ChunkManager {
     this._buildFace(face);
   }
 
+  /** Called every render frame to advance hide animations. */
+  update(dt: number): void {
+    if (this._hiding.size === 0) return;
+
+    const dummy = new THREE.Object3D();
+    for (const [key, anim] of this._hiding) {
+      anim.progress = Math.min(1, anim.progress + dt / HIDE_DURATION);
+      const t = 1 - anim.progress; // 1 → 0
+      const eased = t * t;
+
+      const pos = new THREE.Vector3();
+      const quat = new THREE.Quaternion();
+      const scale = new THREE.Vector3();
+      anim.startMatrix.decompose(pos, quat, scale);
+
+      // Sink into face surface (-z) while shrinking
+      pos.z -= (1 - eased) * CUBE_DEPTH * 4;
+      dummy.position.copy(pos);
+      dummy.quaternion.copy(quat);
+      dummy.scale.set(eased, eased, eased);
+      dummy.updateMatrix();
+
+      anim.instanced.setMatrixAt(anim.idx, dummy.matrix);
+      anim.instanced.instanceMatrix.needsUpdate = true;
+
+      if (anim.progress >= 1) {
+        this._hiding.delete(key);
+      }
+    }
+  }
+
+  /** Hide (animate out and remove) a single square inside a tile. */
+  hideSquare(tileName: string, col: number, row: number): void {
+    const entry = this.cache.get(tileName);
+    if (!entry) return;
+    const idx = row * TILE_SIZE + col;
+    const animKey = `${tileName}:${col}:${row}`;
+    if (this._hiding.has(animKey)) return;
+
+    if (!this._removed.has(tileName)) this._removed.set(tileName, new Set());
+    this._removed.get(tileName)!.add(idx);
+
+    const startM = new THREE.Matrix4();
+    entry.instanced.getMatrixAt(idx, startM);
+    this._hiding.set(animKey, {
+      instanced: entry.instanced,
+      idx,
+      progress: 0,
+      startMatrix: startM.clone(),
+    });
+  }
+
+  /** All removed squares for a given face (for building dark spots on solid cube). */
+  getRemovedSquares(face: FaceId): RemovedSquare[] {
+    const result: RemovedSquare[] = [];
+    for (const tile of getAllTilesForFace(face)) {
+      const key = tileKey(tile);
+      const removedSet = this._removed.get(key);
+      if (!removedSet) continue;
+      for (const idx of removedSet) {
+        const col = idx % TILE_SIZE;
+        const row = Math.floor(idx / TILE_SIZE);
+        result.push({ tileKey: key, tileX: tile.tileX, tileY: tile.tileY, face, col, row });
+      }
+    }
+    return result;
+  }
+
+  /** Access cached tile group for world-space transforms (dark spots). */
+  getTileGroup(key: string): TileCacheEntry | undefined {
+    return this.cache.get(key);
+  }
+
   private _buildFace(face: FaceId): void {
     const tiles = getAllTilesForFace(face);
-    const scaleXY = (TILE_SIZE / SQUARES_PER_SIDE) * CUBE_HALF * 2;
 
     for (const tile of tiles) {
       const key = tileKey(tile);
+
       if (this.cache.has(key)) {
-        this.group.add(this.cache.get(key)!);
+        const entry = this.cache.get(key)!;
+        this.group.add(entry.group);
+        // Re-apply removed squares as invisible (scale 0)
+        const removedSet = this._removed.get(key);
+        if (removedSet) {
+          const zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+          for (const idx of removedSet) {
+            const col = idx % TILE_SIZE;
+            const row = Math.floor(idx / TILE_SIZE);
+            if (!this._hiding.has(`${key}:${col}:${row}`)) {
+              entry.instanced.setMatrixAt(idx, zeroMatrix);
+            }
+          }
+          entry.instanced.instanceMatrix.needsUpdate = true;
+        }
         continue;
       }
 
-      // Solid colored quad for the tile
-      const geometry = new THREE.PlaneGeometry(
-        scaleXY * 0.9998,
-        scaleXY * 0.9998
+      // Build new InstancedMesh for this tile
+      const instanced = new THREE.InstancedMesh(
+        this._sharedGeo,
+        this._sharedMat,
+        TILE_SIZE * TILE_SIZE
       );
-      const material = new THREE.MeshBasicMaterial({
-        color: this._tileColor(tile),
-        side: THREE.FrontSide,
-        polygonOffset: true,
-        polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2,
-      });
-      const mesh = new THREE.Mesh(geometry, material);
+      instanced.castShadow = false;
+      instanced.receiveShadow = false;
 
-      // Grid lines overlay — pushed slightly above the tile mesh to avoid z-fighting
-      const gridLines = buildGridLines(scaleXY);
-      gridLines.position.z = 0.0005;
+      const dummy = new THREE.Object3D();
+      const half = TILE_WORLD_SIZE / 2;
+
+      for (let row = 0; row < TILE_SIZE; row++) {
+        for (let col = 0; col < TILE_SIZE; col++) {
+          const idx = row * TILE_SIZE + col;
+          dummy.position.set(
+            -half + (col + 0.5) * SQUARE_STEP,
+            -half + (row + 0.5) * SQUARE_STEP,
+            CUBE_DEPTH / 2   // float above face surface
+          );
+          dummy.scale.set(1, 1, 1);
+          dummy.rotation.set(0, 0, 0);
+          dummy.updateMatrix();
+          instanced.setMatrixAt(idx, dummy.matrix);
+          instanced.setColorAt(idx, COLOR_A);
+        }
+      }
+
+      instanced.instanceMatrix.needsUpdate = true;
+      instanced.instanceColor!.needsUpdate = true;
+      instanced.userData.tileKey = key;
 
       const tileGroup = new THREE.Group();
       tileGroup.name = key;
-      tileGroup.add(mesh, gridLines);
+      tileGroup.add(instanced);
 
       const { position, rotation } = tileToTransform(tile);
       tileGroup.position.copy(position);
       tileGroup.rotation.copy(rotation);
-
-      // Push slightly in front of the face to avoid z-fighting
       tileGroup.position.addScaledVector(FACE_NORMALS[tile.face], 0.002);
 
-      this.cache.set(key, tileGroup);
+      this.cache.set(key, { group: tileGroup, instanced });
       this.group.add(tileGroup);
     }
   }
 
-  private _tileColor(tile: TileDescriptor): number {
-    const checker = (tile.tileX + tile.tileY) % 2 === 0;
-    return checker ? 0x4a90d9 : 0x2c6fa8;
-  }
-
   private _clearGroup(): void {
     while (this.group.children.length > 0) {
-      const child = this.group.children[0]!;
-      this.group.remove(child);
+      this.group.remove(this.group.children[0]!);
     }
   }
 
   dispose(): void {
     this._clearGroup();
-    for (const tileGroup of this.cache.values()) {
-      for (const child of tileGroup.children) {
-        if (
-          child instanceof THREE.Mesh ||
-          child instanceof THREE.LineSegments
-        ) {
-          child.geometry.dispose();
-          (child.material as THREE.Material).dispose();
-        }
-      }
-    }
+    this._sharedGeo.dispose();
+    this._sharedMat.dispose();
     this.cache.clear();
   }
 }

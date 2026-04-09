@@ -14,6 +14,28 @@ interface FloatingLabel {
 }
 
 let _labelId = 0;
+let _audioCtx: AudioContext | null = null;
+
+function playClickSound() {
+  if (typeof window === "undefined") return;
+  if (!_audioCtx) _audioCtx = new AudioContext();
+  const ctx = _audioCtx;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.12);
+
+  gain.gain.setValueAtTime(0.18, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.18);
+}
 
 export function CubeViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,6 +50,7 @@ export function CubeViewer() {
   const [labels, setLabels] = useState<FloatingLabel[]>([]);
 
   const handleSquareClick = useCallback((screenX: number, screenY: number) => {
+    playClickSound();
     const container = containerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
