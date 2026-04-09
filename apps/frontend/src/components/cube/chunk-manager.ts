@@ -15,6 +15,7 @@ import {
   chunkKey,
   chunkIndex,
 } from "./cube-data-model";
+import { type CameraMode } from "./camera-controller";
 
 const HIDE_DURATION = 0.3; // seconds
 const MAX_HIGH_CHUNKS = 4;
@@ -58,6 +59,12 @@ export class ChunkManager {
   private readonly _removed = new Map<string, Set<number>>();
   /** Active sink/shrink animations */
   private readonly _hiding = new Map<string, HideAnimation>();
+
+  /** 
+   * Ratio of removed cubes required to mark a chunk as "shadowed" in macro view.
+   * If > 20% of a chunk's surface area (roughly) is gone, we darken the macro overview.
+   */
+  private readonly SHADOW_THRESHOLD = CUBES_PER_CHUNK * 0.05;
 
   constructor() {
     this._lowGeo = new THREE.BoxGeometry(CHUNK_NAV_SIZE, CHUNK_NAV_SIZE, CHUNK_NAV_SIZE);
@@ -125,10 +132,9 @@ export class ChunkManager {
    * - micro: builds/evicts high-detail chunks near the camera
    * - macro: clears everything (solid cube takes over)
    */
-  updateLod(mode: "macro" | "nav" | "micro", camera: THREE.PerspectiveCamera): void {
-    if (mode === "nav" || mode === "micro") {
-      this.buildLowMesh();
-    }
+  updateLod(mode: CameraMode, camera: THREE.PerspectiveCamera): void {
+    // buildLowMesh is now required for ALL modes to maintain shadow state
+    this.buildLowMesh();
 
     if (mode === "micro") {
       const visible = this._getNearestChunks(camera, MAX_HIGH_CHUNKS);
@@ -168,8 +174,19 @@ export class ChunkManager {
     const animKey = `${cKey}:${cubeIdx}`;
     if (this._hiding.has(animKey)) return;
 
-    if (!this._removed.has(cKey)) this._removed.set(cKey, new Set());
-    this._removed.get(cKey)!.add(cubeIdx);
+    const removedSet = this._removed.get(cKey) || new Set();
+    if (!this._removed.has(cKey)) this._removed.set(cKey, removedSet);
+    removedSet.add(cubeIdx);
+
+    // If chunk passes the shadow threshold, mark it for the solid cube "simulation"
+    if (this._lowMesh && removedSet.size > this.SHADOW_THRESHOLD) {
+      const coord = this._coordFromKey(cKey);
+      if (coord) {
+        const idx = chunkIndex(coord);
+        this._lowMesh.setColorAt(idx, COLOR_REMOVED);
+        this._lowMesh.instanceColor!.needsUpdate = true;
+      }
+    }
 
     const startM = new THREE.Matrix4();
     mesh.getMatrixAt(cubeIdx, startM);

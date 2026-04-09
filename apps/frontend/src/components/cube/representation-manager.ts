@@ -23,8 +23,11 @@ export class RepresentationManager {
 
   forceMode(mode: RepresentationMode): void {
     this._mode = mode;
+    // Solid group is always visible in macro.
     this.solidGroup.visible = mode === "macro";
-    this.chunkLowGroup.visible = mode === "nav" || mode === "micro";
+    // Low group (chunk grid) is now visible in ALL modes to show the shadow simulation
+    // through the semi-transparent solid cube in macro mode.
+    this.chunkLowGroup.visible = true;
     this.chunkHighGroup.visible = mode === "micro";
   }
 }

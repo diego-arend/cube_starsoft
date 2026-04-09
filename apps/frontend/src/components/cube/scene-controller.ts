@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { CameraController, type CameraMode } from "./camera-controller";
 import { RepresentationManager } from "./representation-manager";
 import { ChunkManager, type ChunkManager as ChunkManagerType } from "./chunk-manager";
-import { MINI_CUBE_SIZE } from "./cube-data-model";
+import { MINI_CUBE_SIZE, CHUNK_NAV_SIZE } from "./cube-data-model";
 
 // Grid overlay divisions on the solid cube surface (decorative hierarchy hint)
 const OVERLAY_DIVISIONS = 8;
@@ -157,9 +157,19 @@ export class SceneController {
     this.representationManager.forceMode(mode);
     this._clearHoverHighlight();
 
+    // In macro mode, the solid cube is semi-transparent to reveal the "shadowed" chunks
+    // underneath it. These shadows are updated in real-time by the ChunkManager.
+    if (mode === "macro") {
+      (this.cubeMesh.material as THREE.MeshPhongMaterial).transparent = true;
+      (this.cubeMesh.material as THREE.MeshPhongMaterial).opacity = 0.45; // Significantly increased transparency
+    } else {
+      (this.cubeMesh.material as THREE.MeshPhongMaterial).transparent = false;
+      (this.cubeMesh.material as THREE.MeshPhongMaterial).opacity = 1.0;
+    }
+
     switch (mode) {
       case "macro":
-        this._hint = "Dê um duplo clique para inspecionar";
+        this._hint = "Gire o cubo e dê duplo clique para ver os blocos";
         this.cameraController.lockZoomToMacro();
         this._nearChunks = 0;
         break;
@@ -204,12 +214,44 @@ export class SceneController {
   }
 
   private _onClick(e: MouseEvent): void {
+    if (this.cameraController.mode === "macro") {
+      // In macro mode, let double-click handle the transition or repurpose click
+      return;
+    }
+
+    if (this.cameraController.mode === "nav") {
+      // Logic for Transition from NAV to MICRO on single click
+      const rect = this.canvas.getBoundingClientRect();
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.cameraController.camera);
+      const lowMesh = this.chunkManager.lowGroup.children[0] as THREE.InstancedMesh;
+      if (!lowMesh) return;
+
+      const hits = this.raycaster.intersectObject(lowMesh, false);
+      if (hits.length > 0 && hits[0] && hits[0].instanceId !== undefined) {
+        const hit = hits[0];
+        // Move to micro view of this chunk
+        const hitPos = hit.point;
+        const normal = hit.face?.normal.clone() || new THREE.Vector3(0, 0, 1);
+        
+        this.cameraController.controls.target.copy(hitPos);
+        const VIEW_DIST = 1.15; 
+        const targetPos = hitPos.clone().add(normal.multiplyScalar(VIEW_DIST));
+        
+        this.cameraController.unlockZoom();
+        this.cameraController.animateTo(targetPos, undefined, true);
+      }
+      return;
+    }
+
     if (this.cameraController.mode !== "micro") return;
     
     // Only allow click interaction if the camera is near the maximum possible zoom (min distance).
-    // Using a 0.2 buffer above the min distance (0.15) to ensure it's easy to reach the clickable state.
+    // Using a 0.25 buffer above the new min distance (0.08) for easy interaction.
     const distFromTarget = this.cameraController.camera.position.distanceTo(this.cameraController.controls.target);
-    if (distFromTarget > 0.35) return;
+    if (distFromTarget > 0.33) return;
 
     const rect = this.canvas.getBoundingClientRect();
     const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -236,7 +278,7 @@ export class SceneController {
   }
 
   private _onPointerMove(e: PointerEvent): void {
-    if (this.cameraController.mode !== "micro") {
+    if (this.cameraController.mode === "macro") {
       this._clearHoverHighlight();
       return;
     }
@@ -250,6 +292,47 @@ export class SceneController {
       this.cameraController.camera,
     );
 
+    if (this.cameraController.mode === "nav") {
+      // In Nav Mode, highlight the entire chunk
+      const lowMesh = this.chunkManager.lowGroup.children[0] as THREE.InstancedMesh;
+      if (!lowMesh) return;
+
+      const hits = this.raycaster.intersectObject(lowMesh, false);
+      if (!hits.length || !hits[0] || hits[0].instanceId === undefined) {
+        this._clearHoverHighlight();
+        return;
+      }
+
+      const hit = hits[0];
+      const instanceId = hit.instanceId!;
+      const hoverKey = `nav:${instanceId}`;
+      if (hoverKey === this._hoveredKey) return;
+
+      this._clearHoverHighlight();
+      this._hoveredKey = hoverKey;
+
+      const instMatrix = new THREE.Matrix4();
+      lowMesh.getMatrixAt(instanceId, instMatrix);
+      const localPos = new THREE.Vector3().setFromMatrixPosition(instMatrix);
+      const worldPos = localPos.applyMatrix4(lowMesh.matrixWorld);
+
+      // Use chunk size for nav highlight
+      const hoverSize = CHUNK_NAV_SIZE * 1.05;
+      const hoverGeo = new THREE.BoxGeometry(hoverSize, hoverSize, hoverSize);
+      const hoverMat = new THREE.MeshBasicMaterial({
+        color: 0x00cfff,
+        transparent: true,
+        opacity: 0.3,
+        depthTest: true,
+      });
+      const hoverMesh = new THREE.Mesh(hoverGeo, hoverMat);
+      hoverMesh.position.copy(worldPos);
+      this.highlightGroup.add(hoverMesh);
+      this._hoverHighlight = hoverMesh;
+      return;
+    }
+
+    // MICRO Mode Hover logic follows
     const highMeshes = this.chunkManager.getHighMeshes().filter(
       (m) => !m.userData.isHover,
     );

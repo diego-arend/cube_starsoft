@@ -15,12 +15,16 @@ export interface CameraState {
   isAnimating: boolean;
 }
 
-const LOD_MACRO_THRESHOLD = 4.0;
+const LOD_MACRO_THRESHOLD = 3.8;
 // Entry threshold: camera crosses into micro LOD when closer than this.
 const LOD_MICRO_THRESHOLD = 1.4;
+
+// The fixed zoom level for Macro view. 
+// We are setting this closer to the object as requested (maximum screen coverage).
+const MACRO_FIXED_DIST = 4.0;
+
 // Hard stop: OrbitControls never lets the camera go below this distance.
-// Further reduced for two more zoom levels as requested.
-const LOD_MICRO_MIN_DIST = 0.15;
+const LOD_MICRO_MIN_DIST = 0.08;
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -30,7 +34,7 @@ export class CameraController {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
 
-  private _mode: CameraMode = "macro";
+  private _mode: CameraMode = "nav"; // Start at nav instead of macro
   private _isAnimating = false;
 
   private animProgress = 0;
@@ -51,9 +55,9 @@ export class CameraController {
     this.controls.dampingFactor = 0.08;
     this.controls.enablePan = true;
     this.controls.enableZoom = true;
-    // By default, in macro mode, lock zoom so user cannot enter nav/micro freely.
-    // Transition to closer LODs must be triggered via animateToFace().
-    this.controls.minDistance = LOD_MACRO_THRESHOLD + 0.5;
+    // Macro view now has a fixed zoom level.
+    // We set min and max distance to the same value to lock it.
+    this.controls.minDistance = LOD_MICRO_MIN_DIST; // Allow zoom since we start in Nav/Micro context
     this.controls.maxDistance = 18;
     this.controls.target.set(0, 0, 0);
   }
@@ -61,11 +65,13 @@ export class CameraController {
   /** Temporarily unlock zoom constraints (called during/after intentional transition) */
   unlockZoom(minDist: number = LOD_MICRO_MIN_DIST): void {
     this.controls.minDistance = minDist;
+    this.controls.maxDistance = 18; // Allow zoom out up to 18
   }
 
-  /** Relock zoom to macro level */
+  /** Relock zoom to macro level (fixed zoom) */
   lockZoomToMacro(): void {
-    this.controls.minDistance = LOD_MACRO_THRESHOLD + 0.5;
+    this.controls.minDistance = MACRO_FIXED_DIST;
+    this.controls.maxDistance = MACRO_FIXED_DIST;
   }
 
   get mode(): CameraMode {
