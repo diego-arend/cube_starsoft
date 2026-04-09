@@ -42,10 +42,10 @@ export function CubeViewer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<SceneController | null>(null);
   const [stats, setStats] = useState<SceneStats>({
-    mode: "solid",
-    activeFace: "+Z",
+    mode: "macro",
+    nearChunks: 0,
     fps: 0,
-    hint: "Duplo clique em uma face para selecionar",
+    hint: "Dê um duplo clique para inspecionar",
   });
   const [labels, setLabels] = useState<FloatingLabel[]>([]);
 
@@ -91,15 +91,15 @@ export function CubeViewer() {
   }, [handleSquareClick]);
 
   const modeBadgeColor: Record<string, string> = {
-    solid: "bg-blue-600",
-    face: "bg-amber-500",
-    detail: "bg-emerald-600",
+    macro: "bg-blue-600",
+    nav:   "bg-amber-500",
+    micro: "bg-emerald-600",
   };
 
   const modeLabel: Record<string, string> = {
-    solid: "Cubo",
-    face: "Face",
-    detail: "Detalhe",
+    macro: "Macro",
+    nav:   "Navegação",
+    micro: "Micro",
   };
 
   return (
@@ -132,9 +132,9 @@ export function CubeViewer() {
         >
           {modeLabel[stats.mode] ?? stats.mode}
         </div>
-        {stats.mode !== "solid" && (
-          <div className="px-3 py-1 rounded-full text-xs font-semibold text-white shadow bg-gray-800/80">
-            Face: {stats.activeFace}
+        {stats.mode === "micro" && stats.nearChunks > 0 && (
+          <div className="px-3 py-1 rounded-full text-xs font-semibold text-white shadow bg-emerald-800/80">
+            {stats.nearChunks} chunk{stats.nearChunks > 1 ? "s" : ""} detalhado{stats.nearChunks > 1 ? "s" : ""}
           </div>
         )}
         <div className="px-3 py-1 rounded-full text-xs font-semibold text-white shadow bg-gray-800/80">

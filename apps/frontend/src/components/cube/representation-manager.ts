@@ -1,23 +1,20 @@
 import * as THREE from "three";
 
-export type RepresentationMode = "solid" | "face";
+export type RepresentationMode = "macro" | "nav" | "micro";
 
 /**
- * Manages which representation is active.
- * - "solid": full cube visible, face/chunk groups hidden
- * - "face": solid cube hidden, face planes + ALL chunk tiles visible
- *
- * There is no longer a separate "detail" mode — chunks are always shown
- * when in face mode. Zoom level controls how many chunks are visible on screen,
- * but all tiles are built and present in the scene graph.
+ * Manages scene-group visibility based on the active LOD mode.
+ *   macro  – solid cube only
+ *   nav    – chunk low-detail grid (262k instances)
+ *   micro  – chunk low-detail + high-detail (up to 4 chunks × 1,331 instances)
  */
 export class RepresentationManager {
-  private _mode: RepresentationMode = "solid";
+  private _mode: RepresentationMode = "macro";
 
   constructor(
     private readonly solidGroup: THREE.Group,
-    private readonly faceGroup: THREE.Group,
-    private readonly chunkGroup: THREE.Group
+    private readonly chunkLowGroup: THREE.Group,
+    private readonly chunkHighGroup: THREE.Group,
   ) {}
 
   get mode(): RepresentationMode {
@@ -26,14 +23,8 @@ export class RepresentationManager {
 
   forceMode(mode: RepresentationMode): void {
     this._mode = mode;
-    this._applyVisibility();
-  }
-
-  private _applyVisibility(): void {
-    this.solidGroup.visible = this._mode === "solid";
-    // faceGroup background planes are hidden in face mode — chunks cover the entire face,
-    // so showing both simultaneously causes z-fighting (interlace artifact).
-    this.faceGroup.visible = false;
-    this.chunkGroup.visible = this._mode === "face";
+    this.solidGroup.visible = mode === "macro";
+    this.chunkLowGroup.visible = mode === "nav" || mode === "micro";
+    this.chunkHighGroup.visible = mode === "micro";
   }
 }
