@@ -20,6 +20,8 @@ export class SceneController {
 
   private readonly solidGroup: THREE.Group;
   private cubeMesh!: THREE.Mesh;
+  private microLight: THREE.DirectionalLight | null = null;
+  private macroLights: THREE.Group = new THREE.Group();
 
   readonly cameraController: CameraController;
   private readonly representationManager: RepresentationManager;
@@ -55,10 +57,27 @@ export class SceneController {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0f111a);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(5, 10, 8);
-    this.scene.add(ambient, dirLight);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(ambient);
+
+    const macroPositions = [
+      [5, 5, 5],
+      [-5, 5, 5],
+      [5, -5, 5],
+      [5, 5, -5],
+    ];
+
+    for (const pos of macroPositions) {
+      const light = new THREE.DirectionalLight(0xffffff, 0.4);
+      light.position.set(pos[0] as number, pos[1] as number, pos[2] as number);
+      this.macroLights.add(light);
+    }
+    this.scene.add(this.macroLights);
+
+    // Dynamic light for micro view that follows the camera
+    this.microLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    this.microLight.visible = false;
+    this.scene.add(this.microLight);
 
     this.solidGroup = new THREE.Group();
     this.highlightGroup = new THREE.Group();
@@ -78,13 +97,15 @@ export class SceneController {
       this.chunkManager.lowGroup,
       this.chunkManager.highGroup,
     );
-    this.representationManager.forceMode("macro");
 
     this.cameraController = new CameraController(
       canvas,
       canvas.clientWidth,
       canvas.clientHeight,
     );
+
+    // Initialize the LOD state explicitly AFTER cameraController is defined
+    this._onLodChanged("macro");
 
     this.cameraController.onLodChanged = (mode) => this._onLodChanged(mode);
 
@@ -101,7 +122,13 @@ export class SceneController {
 
   private _buildSolidCube(): void {
     const geo = new THREE.BoxGeometry(2, 2, 2);
-    const mat = new THREE.MeshPhongMaterial({ color: 0xa0aab8, shininess: 30 });
+    // Initialize material with SOLID properties to prevent "glass" effect on first frame.
+    const mat = new THREE.MeshPhongMaterial({ 
+      color: 0xa0aab8, 
+      shininess: 30,
+      transparent: false,
+      opacity: 1.0
+    });
     this.cubeMesh = new THREE.Mesh(geo, mat);
 
     const edges = new THREE.EdgesGeometry(geo);
@@ -157,14 +184,28 @@ export class SceneController {
     this.representationManager.forceMode(mode);
     this._clearHoverHighlight();
 
-    // In macro mode, the solid cube is semi-transparent to reveal the "shadowed" chunks
-    // underneath it. These shadows are updated in real-time by the ChunkManager.
+    const mat = this.cubeMesh.material as THREE.MeshPhongMaterial;
+
     if (mode === "macro") {
-      (this.cubeMesh.material as THREE.MeshPhongMaterial).transparent = true;
-      (this.cubeMesh.material as THREE.MeshPhongMaterial).opacity = 0.45; // Significantly increased transparency
+      // Only go semi-transparent when there are actually dark chunks to show,
+      // so the first render is always solid and never glass-like.
+      if (this.chunkManager.hasRemovedChunks()) {
+        mat.transparent = true;
+        mat.opacity = 0.88;
+        mat.needsUpdate = true;
+      } else {
+        mat.transparent = false;
+        mat.opacity = 1.0;
+      }
+      this.macroLights.visible = true;
+      if (this.microLight) this.microLight.visible = false;
     } else {
-      (this.cubeMesh.material as THREE.MeshPhongMaterial).transparent = false;
-      (this.cubeMesh.material as THREE.MeshPhongMaterial).opacity = 1.0;
+      this.macroLights.visible = false;
+      if (this.microLight) {
+        this.microLight.visible = true;
+        this.microLight.position.copy(this.cameraController.camera.position);
+        this.microLight.position.add(new THREE.Vector3(1, 1, 1));
+      }
     }
 
     switch (mode) {

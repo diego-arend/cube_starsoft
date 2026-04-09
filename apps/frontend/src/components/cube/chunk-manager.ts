@@ -126,6 +126,11 @@ export class ChunkManager {
     return [...this._highCache.values()];
   }
 
+  /** Returns true if any mini-cubes have been removed across any chunk */
+  hasRemovedChunks(): boolean {
+    return this._removed.size > 0;
+  }
+
   /**
    * Called each frame to maintain correct LOD state.
    * - nav:   ensures low mesh exists; clears high meshes
